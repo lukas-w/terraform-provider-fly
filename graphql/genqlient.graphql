@@ -1,3 +1,9 @@
+fragment SecretFragment on Secret {
+    name
+    digest
+    createdAt
+}
+
 query GetFullApp($name: String) {
     app(name: $name) {
         name
@@ -247,8 +253,34 @@ mutation RemoveWireguardPeer(
 
 mutation SetSecrets($input: SetSecretsInput!) {
     setSecrets(input: $input) {
-        release {
-            id
+        app {
+            # @genqlient(flatten: true)
+            secrets {
+                ...SecretFragment
+            }
+        }
+    }
+}
+
+mutation UnsetSecrets($appId: ID!, $keys: [String!]!) {
+    unsetSecrets(input: {
+        appId: $appId,
+        keys: $keys
+    }) {
+        app {
+            # @genqlient(flatten: true)
+            secrets {
+                ...SecretFragment
+            }
+        }
+    }
+}
+
+query GetSecrets($name: String!) {
+    app(name: $name) {
+        # @genqlient(flatten: true)
+        secrets {
+            ...SecretFragment
         }
     }
 }

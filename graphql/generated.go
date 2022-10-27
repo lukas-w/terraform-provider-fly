@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/Khan/genqlient/graphql"
 )
@@ -923,6 +924,22 @@ type GetFullAppResponse struct {
 // GetApp returns GetFullAppResponse.App, and is useful for accessing the field via an interface.
 func (v *GetFullAppResponse) GetApp() GetFullAppApp { return v.App }
 
+// GetSecretsApp includes the requested fields of the GraphQL type App.
+type GetSecretsApp struct {
+	Secrets []SecretFragment `json:"secrets"`
+}
+
+// GetSecrets returns GetSecretsApp.Secrets, and is useful for accessing the field via an interface.
+func (v *GetSecretsApp) GetSecrets() []SecretFragment { return v.Secrets }
+
+// GetSecretsResponse is returned by GetSecrets on success.
+type GetSecretsResponse struct {
+	App GetSecretsApp `json:"app"`
+}
+
+// GetApp returns GetSecretsResponse.App, and is useful for accessing the field via an interface.
+func (v *GetSecretsResponse) GetApp() GetSecretsApp { return v.App }
+
 type IPAddressType string
 
 const (
@@ -1094,6 +1111,22 @@ func (v *RemoveWireguardPeerResponse) GetRemoveWireGuardPeer() RemoveWireguardPe
 	return v.RemoveWireGuardPeer
 }
 
+// SecretFragment includes the GraphQL fields of Secret requested by the fragment SecretFragment.
+type SecretFragment struct {
+	Name      string    `json:"name"`
+	Digest    string    `json:"digest"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+// GetName returns SecretFragment.Name, and is useful for accessing the field via an interface.
+func (v *SecretFragment) GetName() string { return v.Name }
+
+// GetDigest returns SecretFragment.Digest, and is useful for accessing the field via an interface.
+func (v *SecretFragment) GetDigest() string { return v.Digest }
+
+// GetCreatedAt returns SecretFragment.CreatedAt, and is useful for accessing the field via an interface.
+func (v *SecretFragment) GetCreatedAt() time.Time { return v.CreatedAt }
+
 type SecretInput struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
@@ -1136,21 +1169,51 @@ func (v *SetSecretsResponse) GetSetSecrets() SetSecretsSetSecretsSetSecretsPaylo
 
 // SetSecretsSetSecretsSetSecretsPayload includes the requested fields of the GraphQL type SetSecretsPayload.
 type SetSecretsSetSecretsSetSecretsPayload struct {
-	Release SetSecretsSetSecretsSetSecretsPayloadRelease `json:"release"`
+	App SetSecretsSetSecretsSetSecretsPayloadApp `json:"app"`
 }
 
-// GetRelease returns SetSecretsSetSecretsSetSecretsPayload.Release, and is useful for accessing the field via an interface.
-func (v *SetSecretsSetSecretsSetSecretsPayload) GetRelease() SetSecretsSetSecretsSetSecretsPayloadRelease {
-	return v.Release
+// GetApp returns SetSecretsSetSecretsSetSecretsPayload.App, and is useful for accessing the field via an interface.
+func (v *SetSecretsSetSecretsSetSecretsPayload) GetApp() SetSecretsSetSecretsSetSecretsPayloadApp {
+	return v.App
 }
 
-// SetSecretsSetSecretsSetSecretsPayloadRelease includes the requested fields of the GraphQL type Release.
-type SetSecretsSetSecretsSetSecretsPayloadRelease struct {
-	Id string `json:"id"`
+// SetSecretsSetSecretsSetSecretsPayloadApp includes the requested fields of the GraphQL type App.
+type SetSecretsSetSecretsSetSecretsPayloadApp struct {
+	Secrets []SecretFragment `json:"secrets"`
 }
 
-// GetId returns SetSecretsSetSecretsSetSecretsPayloadRelease.Id, and is useful for accessing the field via an interface.
-func (v *SetSecretsSetSecretsSetSecretsPayloadRelease) GetId() string { return v.Id }
+// GetSecrets returns SetSecretsSetSecretsSetSecretsPayloadApp.Secrets, and is useful for accessing the field via an interface.
+func (v *SetSecretsSetSecretsSetSecretsPayloadApp) GetSecrets() []SecretFragment { return v.Secrets }
+
+// UnsetSecretsResponse is returned by UnsetSecrets on success.
+type UnsetSecretsResponse struct {
+	UnsetSecrets UnsetSecretsUnsetSecretsUnsetSecretsPayload `json:"unsetSecrets"`
+}
+
+// GetUnsetSecrets returns UnsetSecretsResponse.UnsetSecrets, and is useful for accessing the field via an interface.
+func (v *UnsetSecretsResponse) GetUnsetSecrets() UnsetSecretsUnsetSecretsUnsetSecretsPayload {
+	return v.UnsetSecrets
+}
+
+// UnsetSecretsUnsetSecretsUnsetSecretsPayload includes the requested fields of the GraphQL type UnsetSecretsPayload.
+type UnsetSecretsUnsetSecretsUnsetSecretsPayload struct {
+	App UnsetSecretsUnsetSecretsUnsetSecretsPayloadApp `json:"app"`
+}
+
+// GetApp returns UnsetSecretsUnsetSecretsUnsetSecretsPayload.App, and is useful for accessing the field via an interface.
+func (v *UnsetSecretsUnsetSecretsUnsetSecretsPayload) GetApp() UnsetSecretsUnsetSecretsUnsetSecretsPayloadApp {
+	return v.App
+}
+
+// UnsetSecretsUnsetSecretsUnsetSecretsPayloadApp includes the requested fields of the GraphQL type App.
+type UnsetSecretsUnsetSecretsUnsetSecretsPayloadApp struct {
+	Secrets []SecretFragment `json:"secrets"`
+}
+
+// GetSecrets returns UnsetSecretsUnsetSecretsUnsetSecretsPayloadApp.Secrets, and is useful for accessing the field via an interface.
+func (v *UnsetSecretsUnsetSecretsUnsetSecretsPayloadApp) GetSecrets() []SecretFragment {
+	return v.Secrets
+}
 
 // UpdateAutoScaleConfigMutationResponse is returned by UpdateAutoScaleConfigMutation on success.
 type UpdateAutoScaleConfigMutationResponse struct {
@@ -1400,6 +1463,14 @@ type __GetFullAppInput struct {
 // GetName returns __GetFullAppInput.Name, and is useful for accessing the field via an interface.
 func (v *__GetFullAppInput) GetName() string { return v.Name }
 
+// __GetSecretsInput is used internally by genqlient
+type __GetSecretsInput struct {
+	Name string `json:"name"`
+}
+
+// GetName returns __GetSecretsInput.Name, and is useful for accessing the field via an interface.
+func (v *__GetSecretsInput) GetName() string { return v.Name }
+
 // __IpAddressQueryInput is used internally by genqlient
 type __IpAddressQueryInput struct {
 	App  string `json:"app"`
@@ -1443,6 +1514,18 @@ type __SetSecretsInput struct {
 
 // GetInput returns __SetSecretsInput.Input, and is useful for accessing the field via an interface.
 func (v *__SetSecretsInput) GetInput() SetSecretsInput { return v.Input }
+
+// __UnsetSecretsInput is used internally by genqlient
+type __UnsetSecretsInput struct {
+	AppId string   `json:"appId"`
+	Keys  []string `json:"keys"`
+}
+
+// GetAppId returns __UnsetSecretsInput.AppId, and is useful for accessing the field via an interface.
+func (v *__UnsetSecretsInput) GetAppId() string { return v.AppId }
+
+// GetKeys returns __UnsetSecretsInput.Keys, and is useful for accessing the field via an interface.
+func (v *__UnsetSecretsInput) GetKeys() []string { return v.Keys }
 
 // __UpdateAutoScaleConfigMutationInput is used internally by genqlient
 type __UpdateAutoScaleConfigMutationInput struct {
@@ -1946,6 +2029,45 @@ query GetFullApp ($name: String) {
 	return &data, err
 }
 
+func GetSecrets(
+	ctx context.Context,
+	client graphql.Client,
+	name string,
+) (*GetSecretsResponse, error) {
+	req := &graphql.Request{
+		OpName: "GetSecrets",
+		Query: `
+query GetSecrets ($name: String!) {
+	app(name: $name) {
+		secrets {
+			... SecretFragment
+		}
+	}
+}
+fragment SecretFragment on Secret {
+	name
+	digest
+	createdAt
+}
+`,
+		Variables: &__GetSecretsInput{
+			Name: name,
+		},
+	}
+	var err error
+
+	var data GetSecretsResponse
+	resp := &graphql.Response{Data: &data}
+
+	err = client.MakeRequest(
+		ctx,
+		req,
+		resp,
+	)
+
+	return &data, err
+}
+
 func IpAddressQuery(
 	ctx context.Context,
 	client graphql.Client,
@@ -2126,10 +2248,17 @@ func SetSecrets(
 		Query: `
 mutation SetSecrets ($input: SetSecretsInput!) {
 	setSecrets(input: $input) {
-		release {
-			id
+		app {
+			secrets {
+				... SecretFragment
+			}
 		}
 	}
+}
+fragment SecretFragment on Secret {
+	name
+	digest
+	createdAt
 }
 `,
 		Variables: &__SetSecretsInput{
@@ -2139,6 +2268,49 @@ mutation SetSecrets ($input: SetSecretsInput!) {
 	var err error
 
 	var data SetSecretsResponse
+	resp := &graphql.Response{Data: &data}
+
+	err = client.MakeRequest(
+		ctx,
+		req,
+		resp,
+	)
+
+	return &data, err
+}
+
+func UnsetSecrets(
+	ctx context.Context,
+	client graphql.Client,
+	appId string,
+	keys []string,
+) (*UnsetSecretsResponse, error) {
+	req := &graphql.Request{
+		OpName: "UnsetSecrets",
+		Query: `
+mutation UnsetSecrets ($appId: ID!, $keys: [String!]!) {
+	unsetSecrets(input: {appId:$appId,keys:$keys}) {
+		app {
+			secrets {
+				... SecretFragment
+			}
+		}
+	}
+}
+fragment SecretFragment on Secret {
+	name
+	digest
+	createdAt
+}
+`,
+		Variables: &__UnsetSecretsInput{
+			AppId: appId,
+			Keys:  keys,
+		},
+	}
+	var err error
+
+	var data UnsetSecretsResponse
 	resp := &graphql.Response{Data: &data}
 
 	err = client.MakeRequest(

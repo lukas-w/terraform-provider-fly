@@ -122,6 +122,7 @@ func (p *provider) GetResources(ctx context.Context) (map[string]tfsdkprovider.R
 
 	return map[string]tfsdkprovider.ResourceType{
 		"fly_app":     flyAppResourceType{},
+		"fly_secret":  flySecretResourceType{},
 		"fly_volume":  flyVolumeResourceType{},
 		"fly_ip":      flyIpResourceType{},
 		"fly_cert":    flyCertResourceType{},
