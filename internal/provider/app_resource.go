@@ -54,12 +54,14 @@ func (ar flyAppResourceType) GetSchema(context.Context) (tfsdk.Schema, diag.Diag
 				MarkdownDescription: "Name of application",
 				Required:            true,
 				Type:                types.StringType,
+				PlanModifiers:       []tfsdk.AttributePlanModifier{resource.RequiresReplace()},
 			},
 			"org": {
 				Computed:            true,
 				Optional:            true,
 				MarkdownDescription: "Optional org slug to operate upon",
 				Type:                types.StringType,
+				PlanModifiers:       []tfsdk.AttributePlanModifier{resource.RequiresReplace()},
 			},
 			"machines": {
 				Optional:            true,
@@ -225,13 +227,6 @@ func (r flyAppResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	resp.Diagnostics.Append(diags...)
 
 	tflog.Info(ctx, fmt.Sprintf("existing: %+v, new: %+v", state, plan))
-
-	if !plan.Org.Unknown && plan.Org.Value != state.Org.Value {
-		resp.Diagnostics.AddError("Can't mutate org of existing app", "Can't switch org"+state.Org.Value+" to "+plan.Org.Value)
-	}
-	if !plan.Name.Null && plan.Name.Value != state.Name.Value {
-		resp.Diagnostics.AddError("Can't mutate Name of existing app", "Can't switch name "+state.Name.Value+" to "+plan.Name.Value)
-	}
 
 	//if len(plan.Secrets.Elems) > 0 {
 	//	var rawSecrets map[string]string
