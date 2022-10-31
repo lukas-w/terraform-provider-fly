@@ -17,6 +17,7 @@ query GetFullApp($name: String) {
         id
         status
         deployed
+        platformVersion
         currentRelease {
             id
         }
@@ -41,8 +42,8 @@ query GetFullApp($name: String) {
     }
 }
 
-mutation CreateAppMutation($name: String, $organizationId: ID!) {
-    createApp(input: {name: $name, organizationId: $organizationId}) {
+mutation CreateAppMutation($input: CreateAppInput!) {
+    createApp(input: $input) {
         app {
             id
             name
@@ -52,6 +53,7 @@ mutation CreateAppMutation($name: String, $organizationId: ID!) {
                 slug
             }
             appUrl
+            platformVersion
         }
     }
 }

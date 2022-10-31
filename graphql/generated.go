@@ -202,6 +202,45 @@ func (v *AutoscaleRegionConfigInput) GetMinCount() int { return v.MinCount }
 // GetReset returns AutoscaleRegionConfigInput.Reset, and is useful for accessing the field via an interface.
 func (v *AutoscaleRegionConfigInput) GetReset() bool { return v.Reset }
 
+type CreateAppInput struct {
+	ClientMutationId string      `json:"clientMutationId"`
+	OrganizationId   string      `json:"organizationId"`
+	Runtime          RuntimeType `json:"runtime"`
+	Name             string      `json:"name"`
+	PreferredRegion  string      `json:"preferredRegion"`
+	Heroku           bool        `json:"heroku"`
+	Network          string      `json:"network"`
+	AppRoleId        string      `json:"appRoleId"`
+	Machines         bool        `json:"machines"`
+}
+
+// GetClientMutationId returns CreateAppInput.ClientMutationId, and is useful for accessing the field via an interface.
+func (v *CreateAppInput) GetClientMutationId() string { return v.ClientMutationId }
+
+// GetOrganizationId returns CreateAppInput.OrganizationId, and is useful for accessing the field via an interface.
+func (v *CreateAppInput) GetOrganizationId() string { return v.OrganizationId }
+
+// GetRuntime returns CreateAppInput.Runtime, and is useful for accessing the field via an interface.
+func (v *CreateAppInput) GetRuntime() RuntimeType { return v.Runtime }
+
+// GetName returns CreateAppInput.Name, and is useful for accessing the field via an interface.
+func (v *CreateAppInput) GetName() string { return v.Name }
+
+// GetPreferredRegion returns CreateAppInput.PreferredRegion, and is useful for accessing the field via an interface.
+func (v *CreateAppInput) GetPreferredRegion() string { return v.PreferredRegion }
+
+// GetHeroku returns CreateAppInput.Heroku, and is useful for accessing the field via an interface.
+func (v *CreateAppInput) GetHeroku() bool { return v.Heroku }
+
+// GetNetwork returns CreateAppInput.Network, and is useful for accessing the field via an interface.
+func (v *CreateAppInput) GetNetwork() string { return v.Network }
+
+// GetAppRoleId returns CreateAppInput.AppRoleId, and is useful for accessing the field via an interface.
+func (v *CreateAppInput) GetAppRoleId() string { return v.AppRoleId }
+
+// GetMachines returns CreateAppInput.Machines, and is useful for accessing the field via an interface.
+func (v *CreateAppInput) GetMachines() bool { return v.Machines }
+
 // CreateAppMutationCreateAppCreateAppPayload includes the requested fields of the GraphQL type CreateAppPayload.
 type CreateAppMutationCreateAppCreateAppPayload struct {
 	App CreateAppMutationCreateAppCreateAppPayloadApp `json:"app"`
@@ -214,11 +253,12 @@ func (v *CreateAppMutationCreateAppCreateAppPayload) GetApp() CreateAppMutationC
 
 // CreateAppMutationCreateAppCreateAppPayloadApp includes the requested fields of the GraphQL type App.
 type CreateAppMutationCreateAppCreateAppPayloadApp struct {
-	Id           string                                                    `json:"id"`
-	Name         string                                                    `json:"name"`
-	Status       string                                                    `json:"status"`
-	Organization CreateAppMutationCreateAppCreateAppPayloadAppOrganization `json:"organization"`
-	AppUrl       string                                                    `json:"appUrl"`
+	Id              string                                                    `json:"id"`
+	Name            string                                                    `json:"name"`
+	Status          string                                                    `json:"status"`
+	Organization    CreateAppMutationCreateAppCreateAppPayloadAppOrganization `json:"organization"`
+	AppUrl          string                                                    `json:"appUrl"`
+	PlatformVersion PlatformVersionEnum                                       `json:"platformVersion"`
 }
 
 // GetId returns CreateAppMutationCreateAppCreateAppPayloadApp.Id, and is useful for accessing the field via an interface.
@@ -237,6 +277,11 @@ func (v *CreateAppMutationCreateAppCreateAppPayloadApp) GetOrganization() Create
 
 // GetAppUrl returns CreateAppMutationCreateAppCreateAppPayloadApp.AppUrl, and is useful for accessing the field via an interface.
 func (v *CreateAppMutationCreateAppCreateAppPayloadApp) GetAppUrl() string { return v.AppUrl }
+
+// GetPlatformVersion returns CreateAppMutationCreateAppCreateAppPayloadApp.PlatformVersion, and is useful for accessing the field via an interface.
+func (v *CreateAppMutationCreateAppCreateAppPayloadApp) GetPlatformVersion() PlatformVersionEnum {
+	return v.PlatformVersion
+}
 
 // CreateAppMutationCreateAppCreateAppPayloadAppOrganization includes the requested fields of the GraphQL type Organization.
 type CreateAppMutationCreateAppCreateAppPayloadAppOrganization struct {
@@ -498,20 +543,21 @@ func (v *GetCertificateResponse) GetApp() GetCertificateApp { return v.App }
 
 // GetFullAppApp includes the requested fields of the GraphQL type App.
 type GetFullAppApp struct {
-	Name           string                                        `json:"name"`
-	Network        string                                        `json:"network"`
-	Organization   GetFullAppAppOrganization                     `json:"organization"`
-	Autoscaling    GetFullAppAppAutoscalingAutoscalingConfig     `json:"autoscaling"`
-	AppUrl         string                                        `json:"appUrl"`
-	Hostname       string                                        `json:"hostname"`
-	Id             string                                        `json:"id"`
-	Status         string                                        `json:"status"`
-	Deployed       bool                                          `json:"deployed"`
-	CurrentRelease GetFullAppAppCurrentRelease                   `json:"currentRelease"`
-	Config         GetFullAppAppConfig                           `json:"config"`
-	HealthChecks   GetFullAppAppHealthChecksCheckStateConnection `json:"healthChecks"`
-	IpAddresses    GetFullAppAppIpAddressesIPAddressConnection   `json:"ipAddresses"`
-	Role           GetFullAppAppRole                             `json:"-"`
+	Name            string                                        `json:"name"`
+	Network         string                                        `json:"network"`
+	Organization    GetFullAppAppOrganization                     `json:"organization"`
+	Autoscaling     GetFullAppAppAutoscalingAutoscalingConfig     `json:"autoscaling"`
+	AppUrl          string                                        `json:"appUrl"`
+	Hostname        string                                        `json:"hostname"`
+	Id              string                                        `json:"id"`
+	Status          string                                        `json:"status"`
+	Deployed        bool                                          `json:"deployed"`
+	PlatformVersion PlatformVersionEnum                           `json:"platformVersion"`
+	CurrentRelease  GetFullAppAppCurrentRelease                   `json:"currentRelease"`
+	Config          GetFullAppAppConfig                           `json:"config"`
+	HealthChecks    GetFullAppAppHealthChecksCheckStateConnection `json:"healthChecks"`
+	IpAddresses     GetFullAppAppIpAddressesIPAddressConnection   `json:"ipAddresses"`
+	Role            GetFullAppAppRole                             `json:"-"`
 }
 
 // GetName returns GetFullAppApp.Name, and is useful for accessing the field via an interface.
@@ -542,6 +588,9 @@ func (v *GetFullAppApp) GetStatus() string { return v.Status }
 
 // GetDeployed returns GetFullAppApp.Deployed, and is useful for accessing the field via an interface.
 func (v *GetFullAppApp) GetDeployed() bool { return v.Deployed }
+
+// GetPlatformVersion returns GetFullAppApp.PlatformVersion, and is useful for accessing the field via an interface.
+func (v *GetFullAppApp) GetPlatformVersion() PlatformVersionEnum { return v.PlatformVersion }
 
 // GetCurrentRelease returns GetFullAppApp.CurrentRelease, and is useful for accessing the field via an interface.
 func (v *GetFullAppApp) GetCurrentRelease() GetFullAppAppCurrentRelease { return v.CurrentRelease }
@@ -614,6 +663,8 @@ type __premarshalGetFullAppApp struct {
 
 	Deployed bool `json:"deployed"`
 
+	PlatformVersion PlatformVersionEnum `json:"platformVersion"`
+
 	CurrentRelease GetFullAppAppCurrentRelease `json:"currentRelease"`
 
 	Config GetFullAppAppConfig `json:"config"`
@@ -645,6 +696,7 @@ func (v *GetFullAppApp) __premarshalJSON() (*__premarshalGetFullAppApp, error) {
 	retval.Id = v.Id
 	retval.Status = v.Status
 	retval.Deployed = v.Deployed
+	retval.PlatformVersion = v.PlatformVersion
 	retval.CurrentRelease = v.CurrentRelease
 	retval.Config = v.Config
 	retval.HealthChecks = v.HealthChecks
@@ -1017,6 +1069,13 @@ func (v *OrgsQueryResponse) GetOrganizations() OrgsQueryOrganizationsOrganizatio
 	return v.Organizations
 }
 
+type PlatformVersionEnum string
+
+const (
+	PlatformVersionEnumNomad    PlatformVersionEnum = "nomad"
+	PlatformVersionEnumMachines PlatformVersionEnum = "machines"
+)
+
 // ReleaseIpAddressReleaseIpAddressReleaseIPAddressPayload includes the requested fields of the GraphQL type ReleaseIPAddressPayload.
 type ReleaseIpAddressReleaseIpAddressReleaseIPAddressPayload struct {
 	App ReleaseIpAddressReleaseIpAddressReleaseIPAddressPayloadApp `json:"app"`
@@ -1093,6 +1152,13 @@ type RemoveWireguardPeerResponse struct {
 func (v *RemoveWireguardPeerResponse) GetRemoveWireGuardPeer() RemoveWireguardPeerRemoveWireGuardPeerRemoveWireGuardPeerPayload {
 	return v.RemoveWireGuardPeer
 }
+
+type RuntimeType string
+
+const (
+	RuntimeTypeFirecracker RuntimeType = "FIRECRACKER"
+	RuntimeTypeNodeproxy   RuntimeType = "NODEPROXY"
+)
 
 type SecretInput struct {
 	Key   string `json:"key"`
@@ -1286,15 +1352,11 @@ func (v *__AllocateIpAddressInput) GetAddrType() IPAddressType { return v.AddrTy
 
 // __CreateAppMutationInput is used internally by genqlient
 type __CreateAppMutationInput struct {
-	Name           string `json:"name"`
-	OrganizationId string `json:"organizationId"`
+	Input CreateAppInput `json:"input"`
 }
 
-// GetName returns __CreateAppMutationInput.Name, and is useful for accessing the field via an interface.
-func (v *__CreateAppMutationInput) GetName() string { return v.Name }
-
-// GetOrganizationId returns __CreateAppMutationInput.OrganizationId, and is useful for accessing the field via an interface.
-func (v *__CreateAppMutationInput) GetOrganizationId() string { return v.OrganizationId }
+// GetInput returns __CreateAppMutationInput.Input, and is useful for accessing the field via an interface.
+func (v *__CreateAppMutationInput) GetInput() CreateAppInput { return v.Input }
 
 // __CreatePostgresClusterInput is used internally by genqlient
 type __CreatePostgresClusterInput struct {
@@ -1594,14 +1656,13 @@ mutation AllocateIpAddress ($app: ID!, $region: String, $addrType: IPAddressType
 func CreateAppMutation(
 	ctx context.Context,
 	client graphql.Client,
-	name string,
-	organizationId string,
+	input CreateAppInput,
 ) (*CreateAppMutationResponse, error) {
 	req := &graphql.Request{
 		OpName: "CreateAppMutation",
 		Query: `
-mutation CreateAppMutation ($name: String, $organizationId: ID!) {
-	createApp(input: {name:$name,organizationId:$organizationId}) {
+mutation CreateAppMutation ($input: CreateAppInput!) {
+	createApp(input: $input) {
 		app {
 			id
 			name
@@ -1611,13 +1672,13 @@ mutation CreateAppMutation ($name: String, $organizationId: ID!) {
 				slug
 			}
 			appUrl
+			platformVersion
 		}
 	}
 }
 `,
 		Variables: &__CreateAppMutationInput{
-			Name:           name,
-			OrganizationId: organizationId,
+			Input: input,
 		},
 	}
 	var err error
@@ -1903,6 +1964,7 @@ query GetFullApp ($name: String) {
 		id
 		status
 		deployed
+		platformVersion
 		currentRelease {
 			id
 		}

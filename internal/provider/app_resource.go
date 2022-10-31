@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/fly-apps/terraform-provider-fly/graphql"
+	"github.com/fly-apps/terraform-provider-fly/internal/provider/modifiers"
 	"github.com/fly-apps/terraform-provider-fly/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -23,11 +24,12 @@ var _ resource.ResourceWithImportState = flyAppResource{}
 type flyAppResourceType struct{}
 
 type flyAppResourceData struct {
-	Name   types.String `tfsdk:"name"`
-	Org    types.String `tfsdk:"org"`
-	OrgId  types.String `tfsdk:"orgid"`
-	AppUrl types.String `tfsdk:"appurl"`
-	Id     types.String `tfsdk:"id"`
+	Name     types.String `tfsdk:"name"`
+	Org      types.String `tfsdk:"org"`
+	OrgId    types.String `tfsdk:"orgid"`
+	AppUrl   types.String `tfsdk:"appurl"`
+	Id       types.String `tfsdk:"id"`
+	Machines types.Bool   `tfsdk:"machines"`
 	//Secrets types.Map    `tfsdk:"secrets"`
 }
 
@@ -47,6 +49,13 @@ func (ar flyAppResourceType) GetSchema(context.Context) (tfsdk.Schema, diag.Diag
 				Optional:            true,
 				MarkdownDescription: "Optional org slug to operate upon",
 				Type:                types.StringType,
+			},
+			"machines": {
+				Optional:            true,
+				Computed:            true,
+				MarkdownDescription: "Use the machines platform",
+				Type:                types.BoolType,
+				PlanModifiers:       []tfsdk.AttributePlanModifier{modifiers.Default(types.Bool{Value: false})},
 			},
 			"orgid": {
 				Computed:            true,
@@ -111,18 +120,25 @@ func (r flyAppResource) Create(ctx context.Context, req resource.CreateRequest, 
 		}
 		data.OrgId.Value = org.Organization.Id
 	}
-	mresp, err := graphql.CreateAppMutation(context.Background(), *r.provider.client, data.Name.Value, data.OrgId.Value)
+
+	createAppInput := graphql.CreateAppInput{
+		Name:           data.Name.Value,
+		OrganizationId: data.OrgId.Value,
+		Machines:       data.Machines.Value,
+	}
+	mresp, err := graphql.CreateAppMutation(context.Background(), *r.provider.client, createAppInput)
 	if err != nil {
 		resp.Diagnostics.AddError("Create app failed", err.Error())
 		return
 	}
 
 	data = flyAppResourceData{
-		Org:    types.String{Value: mresp.CreateApp.App.Organization.Slug},
-		OrgId:  types.String{Value: mresp.CreateApp.App.Organization.Id},
-		Name:   types.String{Value: mresp.CreateApp.App.Name},
-		AppUrl: types.String{Value: mresp.CreateApp.App.AppUrl},
-		Id:     types.String{Value: mresp.CreateApp.App.Id},
+		Org:      types.String{Value: mresp.CreateApp.App.Organization.Slug},
+		OrgId:    types.String{Value: mresp.CreateApp.App.Organization.Id},
+		Name:     types.String{Value: mresp.CreateApp.App.Name},
+		AppUrl:   types.String{Value: mresp.CreateApp.App.AppUrl},
+		Id:       types.String{Value: mresp.CreateApp.App.Id},
+		Machines: types.Bool{Value: mresp.CreateApp.App.PlatformVersion == graphql.PlatformVersionEnumMachines},
 	}
 
 	//if len(data.Secrets.Elems) > 0 {
@@ -178,11 +194,12 @@ func (r flyAppResource) Read(ctx context.Context, req resource.ReadRequest, resp
 	}
 
 	data := flyAppResourceData{
-		Name:   types.String{Value: query.App.Name},
-		Org:    types.String{Value: query.App.Organization.Slug},
-		OrgId:  types.String{Value: query.App.Organization.Id},
-		AppUrl: types.String{Value: query.App.AppUrl},
-		Id:     types.String{Value: query.App.Id},
+		Name:     types.String{Value: query.App.Name},
+		Org:      types.String{Value: query.App.Organization.Slug},
+		OrgId:    types.String{Value: query.App.Organization.Id},
+		AppUrl:   types.String{Value: query.App.AppUrl},
+		Id:       types.String{Value: query.App.Id},
+		Machines: types.Bool{Value: query.App.PlatformVersion == graphql.PlatformVersionEnumMachines},
 	}
 
 	//if !state.Secrets.Null && !state.Secrets.Unknown {

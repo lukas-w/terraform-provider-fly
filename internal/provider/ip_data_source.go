@@ -60,7 +60,7 @@ func (i ipDataSourceType) GetSchema(ctx context.Context) (tfsdk.Schema, diag.Dia
 				Type:                types.StringType,
 				Computed:            true,
 				PlanModifiers: tfsdk.AttributePlanModifiers{
-					modifiers.StringDefault("global"),
+					modifiers.Default(types.String{Value: "global"}),
 				},
 			},
 		},
