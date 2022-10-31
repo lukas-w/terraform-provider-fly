@@ -7,6 +7,8 @@ import (
 	providerGraphql "github.com/fly-apps/terraform-provider-fly/graphql"
 	"github.com/fly-apps/terraform-provider-fly/internal/utils"
 	"github.com/fly-apps/terraform-provider-fly/internal/wg"
+	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
 	hreq "github.com/imroc/req/v3"
 	"net/http"
 	"os"
@@ -20,13 +22,22 @@ import (
 
 var _ tfsdkprovider.Provider = &provider{}
 
+type gqlClient graphql.Client
+
 type provider struct {
-	configured   bool
-	version      string
-	token        string
+	version string
+	token   string
+}
+
+type providerApi struct {
 	httpEndpoint string
-	client       *graphql.Client
+	gqlClient    *gqlClient
 	httpClient   *hreq.Client
+}
+
+func (c providerApi) configure(providerData any, diag diag.Diagnostics) {
+	c, diags := convertProviderClientsType(providerData)
+	diag.Append(diags...)
 }
 
 type providerData struct {
@@ -49,7 +60,7 @@ func (p *provider) Configure(ctx context.Context, req tfsdkprovider.ConfigureReq
 	var token string
 	if data.FlyToken.Unknown {
 		resp.Diagnostics.AddWarning(
-			"Unable to create client",
+			"Unable to create gqlClient",
 			"Cannot use unknown value as token",
 		)
 		return
@@ -77,7 +88,8 @@ func (p *provider) Configure(ctx context.Context, req tfsdkprovider.ConfigureReq
 		httpEndpoint = endpoint
 	}
 
-	p.httpEndpoint = httpEndpoint
+	var api providerApi
+	api.httpEndpoint = httpEndpoint
 
 	enableTracing := false
 	_, ok := os.LookupEnv("DEBUG")
@@ -86,20 +98,20 @@ func (p *provider) Configure(ctx context.Context, req tfsdkprovider.ConfigureReq
 		resp.Diagnostics.AddWarning("Debug mode enabled", "Debug mode enabled, this will add the Fly-Force-Trace header to all graphql requests")
 	}
 
-	p.httpClient = hreq.C()
+	api.httpClient = hreq.C()
 
 	if enableTracing {
-		p.httpClient.SetCommonHeader("Fly-Force-Trace", "true")
-		p.httpClient = hreq.C().DevMode()
+		api.httpClient.SetCommonHeader("Fly-Force-Trace", "true")
+		api.httpClient = hreq.C().DevMode()
 	}
 
-	p.httpClient.SetCommonHeader("Authorization", "Bearer "+p.token)
-	p.httpClient.SetTimeout(2 * time.Minute)
+	api.httpClient.SetCommonHeader("Authorization", "Bearer "+p.token)
+	api.httpClient.SetTimeout(2 * time.Minute)
 
 	// TODO: Make timeout configurable
 	h := http.Client{Timeout: 60 * time.Second, Transport: &utils.Transport{UnderlyingTransport: http.DefaultTransport, Token: token, Ctx: ctx, EnableDebugTrace: enableTracing}}
 	client := graphql.NewClient("https://api.fly.io/graphql", &h)
-	p.client = &client
+	api.gqlClient = (*gqlClient)(&client)
 
 	if data.UseInternalTunnel.Value {
 		org, err := providerGraphql.Organization(context.Background(), client, data.InternalTunnelOrg.Value)
@@ -112,29 +124,30 @@ func (p *provider) Configure(ctx context.Context, req tfsdkprovider.ConfigureReq
 			resp.Diagnostics.AddError("failed to open internal tunnel", err.Error())
 			return
 		}
-		p.httpClient.SetDial(tunnel.NetStack().DialContext)
-		p.httpEndpoint = "_api.internal:4280"
+		api.httpClient.SetDial(tunnel.NetStack().DialContext)
+		api.httpEndpoint = "_api.internal:4280"
 	}
-	p.configured = true
+
+	resp.ResourceData = &api
+	resp.DataSourceData = &api
 }
 
-func (p *provider) GetResources(ctx context.Context) (map[string]tfsdkprovider.ResourceType, diag.Diagnostics) {
-
-	return map[string]tfsdkprovider.ResourceType{
-		"fly_app":     flyAppResourceType{},
-		"fly_volume":  flyVolumeResourceType{},
-		"fly_ip":      flyIpResourceType{},
-		"fly_cert":    flyCertResourceType{},
-		"fly_machine": flyMachineResourceType{},
-	}, nil
+func (p *provider) Resources(ctx context.Context) []func() resource.Resource {
+	return []func() resource.Resource{
+		newAppResource,
+		newFlyVolumeResource,
+		newFlyIpResource,
+		newFlyCertResource,
+		newFlyMachineResource,
+	}
 }
 
-func (p *provider) GetDataSources(ctx context.Context) (map[string]tfsdkprovider.DataSourceType, diag.Diagnostics) {
-	return map[string]tfsdkprovider.DataSourceType{
-		"fly_app":  appDataSourceType{},
-		"fly_cert": certDataSourceType{},
-		"fly_ip":   ipDataSourceType{},
-	}, nil
+func (p *provider) DataSources(ctx context.Context) []func() datasource.DataSource {
+	return []func() datasource.DataSource{
+		newAppDataSource,
+		newCertDataSource,
+		newIpDataSource,
+	}
 }
 
 func (p *provider) GetSchema(ctx context.Context) (tfsdk.Schema, diag.Diagnostics) {
@@ -146,7 +159,7 @@ func (p *provider) GetSchema(ctx context.Context) (tfsdk.Schema, diag.Diagnostic
 				Type:                types.StringType,
 			},
 			"fly_http_endpoint": {
-				MarkdownDescription: "Where the provider should look to find the fly http endpoint",
+				MarkdownDescription: "Where the clients should look to find the fly http endpoint",
 				Optional:            true,
 				Type:                types.StringType,
 			},
@@ -174,30 +187,30 @@ func New(version string) func() tfsdkprovider.Provider {
 	}
 }
 
-// convertProviderType is a helper function for NewResource and NewDataSource
+// convertProviderClientsType is a helper function for NewResource and NewDataSource
 // implementations to associate the concrete provider type. Alternatively,
 // this helper can be skipped and the provider type can be directly type
 // asserted (e.g. provider: in.(*provider)), however using this can prevent
 // potential panics.
-func convertProviderType(in tfsdkprovider.Provider) (provider, diag.Diagnostics) {
+func convertProviderClientsType(in any) (providerApi, diag.Diagnostics) {
 	var diags diag.Diagnostics
 
-	p, ok := in.(*provider)
+	p, ok := in.(*providerApi)
 
 	if !ok {
 		diags.AddError(
 			"Unexpected Provider Instance Type",
-			fmt.Sprintf("While creating the data source or resource, an unexpected provider type (%T) was received. This is always a bug in the provider code and should be reported to the provider developers.", p),
+			fmt.Sprintf("While creating the data source or resource, an unexpected clients type (%T) was received. This is always a bug in the clients code and should be reported to the clients developers.", p),
 		)
-		return provider{}, diags
+		return providerApi{}, diags
 	}
 
 	if p == nil {
 		diags.AddError(
 			"Unexpected Provider Instance Type",
-			"While creating the data source or resource, an unexpected empty provider instance was received. This is always a bug in the provider code and should be reported to the provider developers.",
+			"While creating the data source or resource, an unexpected empty clients instance was received. This is always a bug in the clients code and should be reported to the clients developers.",
 		)
-		return provider{}, diags
+		return providerApi{}, diags
 	}
 
 	return *p, diags
