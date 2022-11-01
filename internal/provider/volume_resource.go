@@ -12,8 +12,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
-var _ resource.ResourceWithConfigure = flyVolumeResource{}
-var _ resource.ResourceWithImportState = flyVolumeResource{}
+var _ resource.ResourceWithConfigure = &flyVolumeResource{}
+var _ resource.ResourceWithImportState = &flyVolumeResource{}
 
 type flyVolumeResource struct {
 	flyResource
@@ -82,7 +82,7 @@ func (vr flyVolumeResource) Create(ctx context.Context, req resource.CreateReque
 	diags := req.Plan.Get(ctx, &data)
 	resp.Diagnostics.Append(diags...)
 
-	q, err := graphql.CreateVolume(context.Background(), *vr.gqlClient, data.Appid.Value, data.Name.Value, data.Region.Value, int(data.Size.Value))
+	q, err := graphql.CreateVolume(context.Background(), vr.gqlClient, data.Appid.Value, data.Name.Value, data.Region.Value, int(data.Size.Value))
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to create volume", err.Error())
 	}
@@ -114,7 +114,7 @@ func (vr flyVolumeResource) Read(ctx context.Context, req resource.ReadRequest, 
 	internalId := data.Internalid.Value
 	app := data.Appid.Value
 
-	query, err := graphql.VolumeQuery(context.Background(), *vr.gqlClient, app, internalId)
+	query, err := graphql.VolumeQuery(context.Background(), vr.gqlClient, app, internalId)
 	if err != nil {
 		resp.Diagnostics.AddError("Read: query failed", err.Error())
 	}
@@ -147,7 +147,7 @@ func (vr flyVolumeResource) Delete(ctx context.Context, req resource.DeleteReque
 	resp.Diagnostics.Append(diags...)
 
 	if !data.Id.Unknown && !data.Id.Null && data.Id.Value != "" {
-		_, err := graphql.DeleteVolume(context.Background(), *vr.gqlClient, data.Id.Value)
+		_, err := graphql.DeleteVolume(context.Background(), vr.gqlClient, data.Id.Value)
 		if err != nil {
 			resp.Diagnostics.AddError("Delete volume failed", err.Error())
 		}

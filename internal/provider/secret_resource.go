@@ -110,7 +110,7 @@ func (r secretResource) Delete(ctx context.Context, request resource.DeleteReque
 	var data secretResourceModel
 	response.Diagnostics.Append(request.State.Get(ctx, &data)...)
 
-	resp, err := graphql.UnsetSecrets(ctx, *r.gqlClient, data.App.Value, []string{data.Name.Value})
+	resp, err := graphql.UnsetSecrets(ctx, r.gqlClient, data.App.Value, []string{data.Name.Value})
 	if response.Diagnostics.HasError() {
 		return
 	}
@@ -127,7 +127,7 @@ func (r secretResource) Delete(ctx context.Context, request resource.DeleteReque
 }
 
 func (r secretResource) getSecret(ctx context.Context, app, name string, diags *diag.Diagnostics) *graphql.SecretFragment {
-	resp, err := graphql.GetSecrets(ctx, *r.gqlClient, app)
+	resp, err := graphql.GetSecrets(ctx, r.gqlClient, app)
 	if err != nil {
 		diags.AddError("error getting secrets", err.Error())
 	}
@@ -140,7 +140,7 @@ func (r secretResource) getSecret(ctx context.Context, app, name string, diags *
 }
 
 func (r secretResource) setSecret(ctx context.Context, app, name, value string, diags *diag.Diagnostics) *graphql.SecretFragment {
-	resp, err := graphql.SetSecrets(ctx, *r.gqlClient, graphql.SetSecretsInput{
+	resp, err := graphql.SetSecrets(ctx, r.gqlClient, graphql.SetSecretsInput{
 		AppId: app,
 		Secrets: []graphql.SecretInput{{
 			Key:   name,

@@ -47,14 +47,27 @@ type provider struct {
 
 type providerApi struct {
 	httpEndpoint string
-	gqlClient    *gqlClient
-	httpClient   *hreq.Client
-	apiClient    *api.Client
+	gqlClient    gqlClient
+	httpClient   hreq.Client
+	apiClient    api.Client
 }
 
-func (c providerApi) configure(providerData any, diag diag.Diagnostics) {
-	c, diags := convertProviderClientsType(providerData)
-	diag.Append(diags...)
+func (c *providerApi) configure(providerData any, diags diag.Diagnostics) {
+	p, ok := providerData.(*providerApi)
+
+	if !ok {
+		diags.AddError(
+			"Unexpected Provider Instance Type",
+			fmt.Sprintf("While creating the data source or resource, an unexpected clients type (%T) was received. This is always a bug in the clients code and should be reported to the clients developers.", p),
+		)
+	} else if p == nil {
+		diags.AddError(
+			"Unexpected Provider Instance Type",
+			"While creating the data source or resource, an unexpected empty clients instance was received. This is always a bug in the clients code and should be reported to the clients developers.",
+		)
+	} else {
+		*c = *p
+	}
 }
 
 type providerData struct {
@@ -115,11 +128,11 @@ func (p *provider) Configure(ctx context.Context, req tfsdkprovider.ConfigureReq
 		resp.Diagnostics.AddWarning("Debug mode enabled", "Debug mode enabled, this will add the Fly-Force-Trace header to all graphql requests")
 	}
 
-	clients.httpClient = hreq.C()
+	clients.httpClient = *hreq.C()
 
 	if enableTracing {
 		clients.httpClient.SetCommonHeader("Fly-Force-Trace", "true")
-		clients.httpClient = hreq.C().DevMode()
+		clients.httpClient = *hreq.C().DevMode()
 	}
 
 	clients.httpClient.SetCommonHeader("Authorization", "Bearer "+p.token)
@@ -127,8 +140,8 @@ func (p *provider) Configure(ctx context.Context, req tfsdkprovider.ConfigureReq
 
 	// TODO: Make timeout configurable
 	h := http.Client{Timeout: 60 * time.Second, Transport: &utils.Transport{UnderlyingTransport: http.DefaultTransport, Token: token, Ctx: ctx, EnableDebugTrace: enableTracing}}
-	client := graphql.NewClient(fmt.Sprintf("%s/graphql", apiBaseUrl), &h)
-	clients.gqlClient = (*gqlClient)(&client)
+	client := graphql.NewClient(fmt.Sprintf("%s/graphql", baseUrl), &h)
+	clients.gqlClient = *(*gqlClient)(&client)
 
 	if data.UseInternalTunnel.Value {
 		org, err := providerGraphql.Organization(context.Background(), client, data.InternalTunnelOrg.Value)
@@ -145,8 +158,8 @@ func (p *provider) Configure(ctx context.Context, req tfsdkprovider.ConfigureReq
 		clients.httpEndpoint = "_api.internal:4280"
 	}
 
-	api.SetBaseURL(apiBaseUrl)
-	clients.apiClient = api.NewClient(p.token, "terraform-provider-fly", p.version, logger{ctx})
+	api.SetBaseURL(baseUrl)
+	clients.apiClient = *api.NewClient(p.token, "terraform-provider-fly", p.version, logger{ctx})
 	api.SetErrorLog(true)
 
 	resp.ResourceData = &clients
@@ -208,33 +221,4 @@ func New(version string) func() tfsdkprovider.Provider {
 			version: version,
 		}
 	}
-}
-
-// convertProviderClientsType is a helper function for NewResource and NewDataSource
-// implementations to associate the concrete provider type. Alternatively,
-// this helper can be skipped and the provider type can be directly type
-// asserted (e.g. provider: in.(*provider)), however using this can prevent
-// potential panics.
-func convertProviderClientsType(in any) (providerApi, diag.Diagnostics) {
-	var diags diag.Diagnostics
-
-	p, ok := in.(*providerApi)
-
-	if !ok {
-		diags.AddError(
-			"Unexpected Provider Instance Type",
-			fmt.Sprintf("While creating the data source or resource, an unexpected clients type (%T) was received. This is always a bug in the clients code and should be reported to the clients developers.", p),
-		)
-		return providerApi{}, diags
-	}
-
-	if p == nil {
-		diags.AddError(
-			"Unexpected Provider Instance Type",
-			"While creating the data source or resource, an unexpected empty clients instance was received. This is always a bug in the clients code and should be reported to the clients developers.",
-		)
-		return providerApi{}, diags
-	}
-
-	return *p, diags
 }

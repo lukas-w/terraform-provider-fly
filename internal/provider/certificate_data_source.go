@@ -11,7 +11,7 @@ import (
 	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
-var _ datasource.DataSourceWithConfigure = certDataSource{}
+var _ datasource.DataSourceWithConfigure = &certDataSource{}
 
 // Matches getSchema
 type certDataSourceOutput struct {
@@ -72,7 +72,7 @@ func (d certDataSource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnosti
 }
 
 func newCertDataSource() datasource.DataSource {
-	return certDataSource{}
+	return &certDataSource{}
 }
 
 func (d certDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
@@ -88,7 +88,7 @@ func (d certDataSource) Read(ctx context.Context, req datasource.ReadRequest, re
 	hostname := data.Hostname.Value
 	app := data.Appid.Value
 
-	query, err := graphql.GetCertificate(context.Background(), *d.gqlClient, app, hostname)
+	query, err := graphql.GetCertificate(context.Background(), d.gqlClient, app, hostname)
 	var errList gqlerror.List
 	if errors.As(err, &errList) {
 		for _, err := range errList {

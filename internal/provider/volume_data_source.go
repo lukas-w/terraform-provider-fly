@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-var _ datasource.DataSourceWithConfigure = volumeDataSource{}
+var _ datasource.DataSourceWithConfigure = &volumeDataSource{}
 
 // Matches getSchema
 type volumeDataSourceOutput struct {
@@ -77,7 +77,7 @@ func (v volumeDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 	internalId := data.Internalid.Value
 	app := data.Appid.Value
 
-	query, err := graphql.VolumeQuery(context.Background(), *v.gqlClient, app, internalId)
+	query, err := graphql.VolumeQuery(context.Background(), v.gqlClient, app, internalId)
 	if err != nil {
 		resp.Diagnostics.AddError("Read: query failed", err.Error())
 	}

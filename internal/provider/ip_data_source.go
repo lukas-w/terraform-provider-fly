@@ -14,7 +14,7 @@ import (
 	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
-var _ datasource.DataSourceWithConfigure = ipDataSource{}
+var _ datasource.DataSourceWithConfigure = &ipDataSource{}
 
 // Matches getSchema
 type ipDataSourceOutput struct {
@@ -66,7 +66,7 @@ func (i ipDataSource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics
 }
 
 func newIpDataSource() datasource.DataSource {
-	return ipDataSource{}
+	return &ipDataSource{}
 }
 
 func (i ipDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
@@ -82,7 +82,7 @@ func (i ipDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp
 	addr := data.Address.Value
 	app := data.Appid.Value
 
-	query, err := graphql.IpAddressQuery(context.Background(), *i.gqlClient, app, addr)
+	query, err := graphql.IpAddressQuery(context.Background(), i.gqlClient, app, addr)
 	tflog.Info(ctx, fmt.Sprintf("Query res: for %s %s %+v", app, addr, query))
 	var errList gqlerror.List
 	if errors.As(err, &errList) {

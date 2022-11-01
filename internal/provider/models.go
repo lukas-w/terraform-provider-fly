@@ -10,7 +10,7 @@ type flyDataSource struct {
 	providerApi
 }
 
-func (d flyDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+func (d *flyDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
 	d.configure(req.ProviderData, resp.Diagnostics)
 }
 
@@ -18,7 +18,7 @@ type flyResource struct {
 	providerApi
 }
 
-func (r flyResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *flyResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	r.configure(req.ProviderData, resp.Diagnostics)
 }
 

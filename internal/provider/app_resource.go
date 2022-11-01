@@ -16,8 +16,8 @@ import (
 	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
-var _ resource.ResourceWithConfigure = flyAppResource{}
-var _ resource.ResourceWithImportState = flyAppResource{}
+var _ resource.ResourceWithConfigure = &flyAppResource{}
+var _ resource.ResourceWithImportState = &flyAppResource{}
 
 type flyAppResourceData struct {
 	Name     types.String `tfsdk:"name"`
@@ -96,7 +96,7 @@ func (r flyAppResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnosti
 }
 
 func newAppResource() resource.Resource {
-	return flyAppResource{}
+	return &flyAppResource{}
 }
 
 type flyAppResource struct {
@@ -114,7 +114,7 @@ func (r flyAppResource) Create(ctx context.Context, req resource.CreateRequest, 
 	}
 
 	if data.Org.Unknown {
-		defaultOrg, err := utils.GetDefaultOrg(*r.gqlClient)
+		defaultOrg, err := utils.GetDefaultOrg(r.gqlClient)
 		if err != nil {
 			resp.Diagnostics.AddError("Could not detect default organization", err.Error())
 			return
@@ -122,7 +122,7 @@ func (r flyAppResource) Create(ctx context.Context, req resource.CreateRequest, 
 		data.OrgId.Value = defaultOrg.Id
 		data.Org.Value = defaultOrg.Name
 	} else {
-		org, err := graphql.Organization(context.Background(), *r.gqlClient, data.Org.Value)
+		org, err := graphql.Organization(context.Background(), r.gqlClient, data.Org.Value)
 		if err != nil {
 			resp.Diagnostics.AddError("Could not resolve organization", err.Error())
 			return
@@ -135,7 +135,7 @@ func (r flyAppResource) Create(ctx context.Context, req resource.CreateRequest, 
 		OrganizationId: data.OrgId.Value,
 		Machines:       data.Machines.Value,
 	}
-	mresp, err := graphql.CreateAppMutation(context.Background(), *r.gqlClient, createAppInput)
+	mresp, err := graphql.CreateAppMutation(context.Background(), r.gqlClient, createAppInput)
 	if err != nil {
 		resp.Diagnostics.AddError("Create app failed", err.Error())
 		return
@@ -182,7 +182,7 @@ func (r flyAppResource) Read(ctx context.Context, req resource.ReadRequest, resp
 		return
 	}
 
-	query, err := graphql.GetApp(context.Background(), *r.gqlClient, state.Name.Value)
+	query, err := graphql.GetApp(context.Background(), r.gqlClient, state.Name.Value)
 	var errList gqlerror.List
 	if errors.As(err, &errList) {
 		for _, err := range errList {
@@ -234,7 +234,7 @@ func (r flyAppResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	//			Value: v,
 	//		})
 	//	}
-	//	_, err := graphql.SetSecrets(context.Background(), *r.gqlClient, graphql.SetSecretsInput{
+	//	_, err := graphql.SetSecrets(context.Background(), r.gqlClient, graphql.SetSecretsInput{
 	//		AppId:      state.Id.Value,
 	//		Secrets:    secrets,
 	//		ReplaceAll: true,
@@ -259,7 +259,7 @@ func (r flyAppResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 	diags := req.State.Get(ctx, &data)
 	resp.Diagnostics.Append(diags...)
 
-	_, err := graphql.DeleteAppMutation(context.Background(), *r.gqlClient, data.Name.Value)
+	_, err := graphql.DeleteAppMutation(context.Background(), r.gqlClient, data.Name.Value)
 	var errList gqlerror.List
 	if errors.As(err, &errList) {
 		for _, err := range errList {

@@ -15,8 +15,8 @@ import (
 	"strings"
 )
 
-var _ resource.ResourceWithConfigure = flyCertResource{}
-var _ resource.ResourceWithImportState = flyCertResource{}
+var _ resource.ResourceWithConfigure = &flyCertResource{}
+var _ resource.ResourceWithImportState = &flyCertResource{}
 
 type flyCertResource struct {
 	flyResource
@@ -89,7 +89,7 @@ func (cr flyCertResource) Create(ctx context.Context, req resource.CreateRequest
 	diags := req.Plan.Get(ctx, &data)
 	resp.Diagnostics.Append(diags...)
 
-	q, err := graphql.AddCertificate(context.Background(), *cr.gqlClient, data.Appid.Value, data.Hostname.Value)
+	q, err := graphql.AddCertificate(context.Background(), cr.gqlClient, data.Appid.Value, data.Hostname.Value)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to create cert", err.Error())
 	}
@@ -122,7 +122,7 @@ func (cr flyCertResource) Read(ctx context.Context, req resource.ReadRequest, re
 	hostname := data.Hostname.Value
 	app := data.Appid.Value
 
-	query, err := graphql.GetCertificate(context.Background(), *cr.gqlClient, app, hostname)
+	query, err := graphql.GetCertificate(context.Background(), cr.gqlClient, app, hostname)
 	var errList gqlerror.List
 	if errors.As(err, &errList) {
 		for _, err := range errList {
@@ -163,7 +163,7 @@ func (cr flyCertResource) Delete(ctx context.Context, req resource.DeleteRequest
 	diags := req.State.Get(ctx, &data)
 	resp.Diagnostics.Append(diags...)
 
-	_, err := graphql.DeleteCertificate(context.Background(), *cr.gqlClient, data.Appid.Value, data.Hostname.Value)
+	_, err := graphql.DeleteCertificate(context.Background(), cr.gqlClient, data.Appid.Value, data.Hostname.Value)
 	if err != nil {
 		resp.Diagnostics.AddError("Delete cert failed", err.Error())
 	}

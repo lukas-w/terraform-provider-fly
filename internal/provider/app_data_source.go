@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-var _ datasource.DataSourceWithConfigure = appDataSource{}
+var _ datasource.DataSourceWithConfigure = &appDataSource{}
 
 // Matches getSchema
 type appDataSourceOutput struct {
@@ -76,7 +76,7 @@ func (appDataSource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics)
 }
 
 func newAppDataSource() datasource.DataSource {
-	return appDataSource{}
+	return &appDataSource{}
 }
 
 func (d appDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
@@ -91,7 +91,7 @@ func (d appDataSource) Read(ctx context.Context, req datasource.ReadRequest, res
 
 	appName := data.Name.Value
 
-	queryresp, err := graphql.GetFullApp(context.Background(), *d.gqlClient, appName)
+	queryresp, err := graphql.GetFullApp(context.Background(), d.gqlClient, appName)
 	if err != nil {
 		resp.Diagnostics.AddError("Query failed", err.Error())
 	}

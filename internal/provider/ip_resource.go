@@ -15,8 +15,8 @@ import (
 	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
-var _ resource.ResourceWithConfigure = flyIpResource{}
-var _ resource.ResourceWithImportState = flyIpResource{}
+var _ resource.ResourceWithConfigure = &flyIpResource{}
+var _ resource.ResourceWithImportState = &flyIpResource{}
 
 type flyIpResource struct {
 	flyResource
@@ -82,7 +82,7 @@ func (ir flyIpResource) Create(ctx context.Context, req resource.CreateRequest, 
 
 	tflog.Info(ctx, fmt.Sprintf("%+v", data))
 
-	q, err := graphql.AllocateIpAddress(context.Background(), *ir.gqlClient, data.Appid.Value, data.Region.Value, graphql.IPAddressType(data.Type.Value))
+	q, err := graphql.AllocateIpAddress(context.Background(), ir.gqlClient, data.Appid.Value, data.Region.Value, graphql.IPAddressType(data.Type.Value))
 	tflog.Info(ctx, fmt.Sprintf("query res in create ip: %+v", q))
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to create ip addr", err.Error())
@@ -114,7 +114,7 @@ func (ir flyIpResource) Read(ctx context.Context, req resource.ReadRequest, resp
 	addr := data.Address.Value
 	app := data.Appid.Value
 
-	query, err := graphql.IpAddressQuery(context.Background(), *ir.gqlClient, app, addr)
+	query, err := graphql.IpAddressQuery(context.Background(), ir.gqlClient, app, addr)
 	tflog.Info(ctx, fmt.Sprintf("Query res: for %s %s %+v", app, addr, query))
 	var errList gqlerror.List
 	if errors.As(err, &errList) {
@@ -156,7 +156,7 @@ func (ir flyIpResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 	resp.Diagnostics.Append(diags...)
 
 	if !data.Id.Unknown && !data.Id.Null && data.Id.Value != "" {
-		_, err := graphql.ReleaseIpAddress(context.Background(), *ir.gqlClient, data.Id.Value)
+		_, err := graphql.ReleaseIpAddress(context.Background(), ir.gqlClient, data.Id.Value)
 		if err != nil {
 			resp.Diagnostics.AddError("Release ip failed", err.Error())
 		}

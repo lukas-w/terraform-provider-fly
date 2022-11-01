@@ -50,10 +50,12 @@ func (r deploymentResource) GetSchema(ctx context.Context) (tfsdk.Schema, diag.D
 			"app": {
 				Type:          types.StringType,
 				PlanModifiers: []tfsdk.AttributePlanModifier{resource.RequiresReplace()},
+				Required:      true,
 			},
 			"image": {
 				Type:          types.StringType,
 				PlanModifiers: []tfsdk.AttributePlanModifier{resource.RequiresReplace()},
+				Required:      true,
 			},
 			"strategy": {
 				Type:     types.StringType,
@@ -65,6 +67,7 @@ func (r deploymentResource) GetSchema(ctx context.Context) (tfsdk.Schema, diag.D
 				Description:   "JSON-encoded app definition",
 				Validators:    []tfsdk.AttributeValidator{validators.JSON()},
 				PlanModifiers: []tfsdk.AttributePlanModifier{resource.RequiresReplace()},
+				Required:      true,
 			},
 			"id": {
 				Type:     types.StringType,
