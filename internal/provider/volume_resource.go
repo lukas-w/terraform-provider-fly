@@ -3,13 +3,14 @@ package provider
 import (
 	"context"
 	"fmt"
-	"github.com/fly-apps/terraform-provider-fly/graphql"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+	"github.com/superfly/flyctl/api"
 )
 
 var _ resource.ResourceWithConfigure = &flyVolumeResource{}
@@ -24,12 +25,21 @@ func newFlyVolumeResource() resource.Resource {
 }
 
 type flyVolumeResourceData struct {
-	Id         types.String `tfsdk:"id"`
-	Name       types.String `tfsdk:"name"`
-	Size       types.Int64  `tfsdk:"size"`
-	Appid      types.String `tfsdk:"app"`
-	Region     types.String `tfsdk:"region"`
-	Internalid types.String `tfsdk:"internalid"`
+	Id        types.String `tfsdk:"id"`
+	Name      types.String `tfsdk:"name"`
+	Size      types.Int64  `tfsdk:"size"`
+	Appid     types.String `tfsdk:"app"`
+	Region    types.String `tfsdk:"region"`
+	Encrypted types.Bool   `tfsdk:"encrypted"`
+}
+
+func (d *flyVolumeResourceData) fromApiVolume(v api.Volume) {
+	d.Id = types.String{Value: v.ID}
+	d.Name = types.String{Value: v.Name}
+	d.Size = types.Int64{Value: int64(v.SizeGb)}
+	d.Appid = types.String{Value: v.App.Name}
+	d.Region = types.String{Value: v.Region}
+	d.Encrypted = types.Bool{Value: v.Encrypted}
 }
 
 func (vr flyVolumeResource) Metadata(_ context.Context, _ resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -44,33 +54,44 @@ func (vr flyVolumeResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagn
 				MarkdownDescription: "ID of volume",
 				Type:                types.StringType,
 				Computed:            true,
-				Optional:            true,
 			},
 			"app": {
 				MarkdownDescription: "Name of app to attach",
 				Required:            true,
 				Type:                types.StringType,
+				PlanModifiers:       []tfsdk.AttributePlanModifier{resource.RequiresReplace()},
 			},
 			"size": {
 				MarkdownDescription: "Size of volume in gb",
 				Required:            true,
 				Type:                types.Int64Type,
+				PlanModifiers: []tfsdk.AttributePlanModifier{
+					resource.RequiresReplaceIf(func(ctx context.Context, state, config attr.Value, path path.Path) (replace bool, d diag.Diagnostics) {
+						var size, newSize int64
+						d.Append(tfsdk.ValueAs(ctx, state, &size)...)
+						d.Append(tfsdk.ValueAs(ctx, config, &newSize)...)
+						replace = newSize < size
+						return
+					}, "volumes cannot be made smaller", "volumes cannot be made smaller"),
+				},
 			},
 			"name": {
 				MarkdownDescription: "name",
 				Type:                types.StringType,
 				Required:            true,
+				PlanModifiers:       []tfsdk.AttributePlanModifier{resource.RequiresReplace()},
 			},
 			"region": {
 				MarkdownDescription: "region",
 				Type:                types.StringType,
 				Required:            true,
+				PlanModifiers:       []tfsdk.AttributePlanModifier{resource.RequiresReplace()},
 			},
-			"internalid": {
-				MarkdownDescription: "Internal ID",
-				Type:                types.StringType,
-				Computed:            true,
+			"encrypted": {
+				MarkdownDescription: "Encrypt the volume contents. Defaults to `true`",
+				Type:                types.BoolType,
 				Optional:            true,
+				Computed:            true,
 			},
 		},
 	}, nil
@@ -82,80 +103,72 @@ func (vr flyVolumeResource) Create(ctx context.Context, req resource.CreateReque
 	diags := req.Plan.Get(ctx, &data)
 	resp.Diagnostics.Append(diags...)
 
-	q, err := graphql.CreateVolume(context.Background(), vr.gqlClient, data.Appid.Value, data.Name.Value, data.Region.Value, int(data.Size.Value))
+	v, err := vr.apiClient.CreateVolume(ctx, api.CreateVolumeInput{
+		AppID:     data.Appid.Value,
+		Name:      data.Name.Value,
+		Region:    data.Region.Value,
+		SizeGb:    int(data.Size.Value),
+		Encrypted: data.Encrypted.IsNull() || data.Encrypted.IsUnknown() || data.Encrypted.Value,
+	})
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to create volume", err.Error())
 	}
 
-	data = flyVolumeResourceData{
-		Id:         types.String{Value: q.CreateVolume.Volume.Id},
-		Name:       types.String{Value: q.CreateVolume.Volume.Name},
-		Size:       types.Int64{Value: int64(q.CreateVolume.Volume.SizeGb)},
-		Appid:      types.String{Value: data.Appid.Value},
-		Region:     types.String{Value: q.CreateVolume.Volume.Region},
-		Internalid: types.String{Value: q.CreateVolume.Volume.InternalId},
-	}
+	data.fromApiVolume(*v)
 
 	tflog.Info(ctx, fmt.Sprintf("%+v", data))
 
-	diags = resp.State.Set(ctx, &data)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
 func (vr flyVolumeResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	var data flyVolumeResourceData
 
-	diags := req.State.Get(ctx, &data)
-	resp.Diagnostics.Append(diags...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 
-	internalId := data.Internalid.Value
-	app := data.Appid.Value
-
-	query, err := graphql.VolumeQuery(context.Background(), vr.gqlClient, app, internalId)
+	v, err := vr.apiClient.GetVolume(ctx, data.Id.Value)
 	if err != nil {
 		resp.Diagnostics.AddError("Read: query failed", err.Error())
 	}
-
-	data = flyVolumeResourceData{
-		Id:         types.String{Value: query.App.Volume.Id},
-		Name:       types.String{Value: query.App.Volume.Name},
-		Size:       types.Int64{Value: int64(query.App.Volume.SizeGb)},
-		Appid:      types.String{Value: data.Appid.Value},
-		Region:     types.String{Value: query.App.Volume.Region},
-		Internalid: types.String{Value: query.App.Volume.InternalId},
-	}
-
-	diags = resp.State.Set(ctx, &data)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
+	if v == nil {
+		resp.State.RemoveResource(ctx)
 		return
 	}
+
+	data.fromApiVolume(*v)
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
 func (vr flyVolumeResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	resp.Diagnostics.AddError("The fly api does not allow updating volumes once created", "Try deleting and then recreating a volume with new options")
-	return
+	var state, plan flyVolumeResourceData
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	if plan.Size.Value > state.Size.Value {
+		v, err := vr.apiClient.ExtendVolume(ctx, api.ExtendVolumeInput{
+			VolumeID: state.Id.Value,
+			SizeGb:   int(plan.Size.Value),
+		})
+		if err != nil {
+			resp.Diagnostics.AddError("error extending volume", err.Error())
+			return
+		}
+		state.fromApiVolume(*v)
+	}
+	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
 func (vr flyVolumeResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	var data flyVolumeResourceData
+	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 
-	diags := req.State.Get(ctx, &data)
-	resp.Diagnostics.Append(diags...)
-
-	if !data.Id.Unknown && !data.Id.Null && data.Id.Value != "" {
-		_, err := graphql.DeleteVolume(context.Background(), vr.gqlClient, data.Id.Value)
-		if err != nil {
-			resp.Diagnostics.AddError("Delete volume failed", err.Error())
-		}
-	}
-
-	resp.State.RemoveResource(ctx)
-
-	if resp.Diagnostics.HasError() {
+	_, err := vr.apiClient.DeleteVolume(ctx, data.Id.Value)
+	if err != nil {
+		resp.Diagnostics.AddError("Delete volume failed", err.Error())
 		return
 	}
 }
