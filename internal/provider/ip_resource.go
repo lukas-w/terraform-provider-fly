@@ -67,7 +67,7 @@ func (flyIpResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics)
 				Type:                types.StringType,
 				Computed:            true,
 				PlanModifiers: tfsdk.AttributePlanModifiers{
-					modifiers.StringDefault("global"),
+					modifiers.Default(types.String{Value: "global"}),
 				},
 			},
 		},

@@ -17,6 +17,7 @@ query GetFullApp($name: String) {
         id
         status
         deployed
+        platformVersion
         currentRelease {
             id
         }
@@ -41,17 +42,29 @@ query GetFullApp($name: String) {
     }
 }
 
-mutation CreateAppMutation($name: String, $organizationId: ID!) {
-    createApp(input: {name: $name, organizationId: $organizationId}) {
+fragment AppFragment on App {
+    id
+    name
+    organization {
+        id
+        slug
+    }
+    appUrl
+    platformVersion
+}
+
+query GetApp($name: String) {
+    # @genqlient(flatten: true)
+    app(name: $name) {
+        ...AppFragment
+    }
+}
+
+mutation CreateAppMutation($input: CreateAppInput!) {
+    createApp(input: $input) {
+        # @genqlient(flatten: true)
         app {
-            id
-            name
-            status
-            organization {
-                id
-                slug
-            }
-            appUrl
+            ...AppFragment
         }
     }
 }
@@ -225,7 +238,7 @@ mutation CreatePostgresCluster(
 }
 
 mutation AddWireguardPeer(
-   $input: AddWireGuardPeerInput!
+    $input: AddWireGuardPeerInput!
 ) {
     addWireGuardPeer(input: $input) {
         network
