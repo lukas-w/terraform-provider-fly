@@ -11,12 +11,14 @@ require (
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.22.0
 	github.com/imroc/req/v3 v3.22.0
 	github.com/miekg/dns v1.1.50
+	github.com/superfly/flyctl/api v0.0.0-20221029202410-a1d61bdc68de
 	github.com/vektah/gqlparser/v2 v2.5.1
 	golang.org/x/crypto v0.1.0
 	golang.zx2c4.com/wireguard v0.0.0-20220920152132-bb719d3a6e2c
 )
 
 require (
+	github.com/PuerkitoBio/rehttp v1.1.0 // indirect
 	github.com/agext/levenshtein v1.2.2 // indirect
 	github.com/agnivade/levenshtein v1.1.1 // indirect
 	github.com/alexflint/go-arg v1.4.2 // indirect
@@ -66,6 +68,9 @@ require (
 	github.com/nxadm/tail v1.4.8 // indirect
 	github.com/oklog/run v1.1.0 // indirect
 	github.com/onsi/ginkgo v1.16.5 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
+	github.com/stretchr/testify v1.8.0 // indirect
+	github.com/superfly/graphql v0.2.3 // indirect
 	github.com/vmihailenco/msgpack v4.0.4+incompatible // indirect
 	github.com/vmihailenco/msgpack/v4 v4.3.12 // indirect
 	github.com/vmihailenco/tagparser v0.1.2 // indirect
@@ -75,7 +80,7 @@ require (
 	golang.org/x/net v0.1.0 // indirect
 	golang.org/x/sys v0.1.0 // indirect
 	golang.org/x/text v0.4.0 // indirect
-	golang.org/x/time v0.0.0-20191024005414-555d28b269f0 // indirect
+	golang.org/x/time v0.0.0-20210220033141-f8bda1e9f3ba // indirect
 	golang.org/x/tools v0.1.12 // indirect
 	golang.zx2c4.com/wintun v0.0.0-20211104114900-415007cec224 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
