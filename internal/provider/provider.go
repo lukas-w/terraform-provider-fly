@@ -9,7 +9,9 @@ import (
 	"github.com/fly-apps/terraform-provider-fly/internal/wg"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	hreq "github.com/imroc/req/v3"
+	"github.com/superfly/flyctl/api"
 	"net/http"
 	"os"
 	"time"
@@ -22,7 +24,21 @@ import (
 
 var _ tfsdkprovider.Provider = &provider{}
 
+const baseUrl = "https://api.fly.io"
+
 type gqlClient graphql.Client
+
+type logger struct {
+	context.Context
+}
+
+func (l logger) Debug(v ...interface{}) {
+	tflog.Debug(l.Context, fmt.Sprint(v...))
+}
+
+func (l logger) Debugf(format string, v ...interface{}) {
+	tflog.Debug(l.Context, fmt.Sprintf(format, v...))
+}
 
 type provider struct {
 	version string
@@ -33,6 +49,7 @@ type providerApi struct {
 	httpEndpoint string
 	gqlClient    *gqlClient
 	httpClient   *hreq.Client
+	apiClient    *api.Client
 }
 
 func (c providerApi) configure(providerData any, diag diag.Diagnostics) {
@@ -80,16 +97,16 @@ func (p *provider) Configure(ctx context.Context, req tfsdkprovider.ConfigureReq
 
 	p.token = token
 
-	endpoint, exists := os.LookupEnv("FLY_HTTP_ENDPOINT")
+	apiBaseUrl, exists := os.LookupEnv("FLY_HTTP_ENDPOINT")
 	httpEndpoint := "127.0.0.1:4280"
 	if !data.FlyHttpEndpoint.Null && !data.FlyHttpEndpoint.Unknown {
 		httpEndpoint = data.FlyHttpEndpoint.Value
 	} else if exists {
-		httpEndpoint = endpoint
+		httpEndpoint = apiBaseUrl
 	}
 
-	var api providerApi
-	api.httpEndpoint = httpEndpoint
+	var clients providerApi
+	clients.httpEndpoint = httpEndpoint
 
 	enableTracing := false
 	_, ok := os.LookupEnv("DEBUG")
@@ -98,20 +115,20 @@ func (p *provider) Configure(ctx context.Context, req tfsdkprovider.ConfigureReq
 		resp.Diagnostics.AddWarning("Debug mode enabled", "Debug mode enabled, this will add the Fly-Force-Trace header to all graphql requests")
 	}
 
-	api.httpClient = hreq.C()
+	clients.httpClient = hreq.C()
 
 	if enableTracing {
-		api.httpClient.SetCommonHeader("Fly-Force-Trace", "true")
-		api.httpClient = hreq.C().DevMode()
+		clients.httpClient.SetCommonHeader("Fly-Force-Trace", "true")
+		clients.httpClient = hreq.C().DevMode()
 	}
 
-	api.httpClient.SetCommonHeader("Authorization", "Bearer "+p.token)
-	api.httpClient.SetTimeout(2 * time.Minute)
+	clients.httpClient.SetCommonHeader("Authorization", "Bearer "+p.token)
+	clients.httpClient.SetTimeout(2 * time.Minute)
 
 	// TODO: Make timeout configurable
 	h := http.Client{Timeout: 60 * time.Second, Transport: &utils.Transport{UnderlyingTransport: http.DefaultTransport, Token: token, Ctx: ctx, EnableDebugTrace: enableTracing}}
-	client := graphql.NewClient("https://api.fly.io/graphql", &h)
-	api.gqlClient = (*gqlClient)(&client)
+	client := graphql.NewClient(fmt.Sprintf("%s/graphql", apiBaseUrl), &h)
+	clients.gqlClient = (*gqlClient)(&client)
 
 	if data.UseInternalTunnel.Value {
 		org, err := providerGraphql.Organization(context.Background(), client, data.InternalTunnelOrg.Value)
@@ -124,12 +141,16 @@ func (p *provider) Configure(ctx context.Context, req tfsdkprovider.ConfigureReq
 			resp.Diagnostics.AddError("failed to open internal tunnel", err.Error())
 			return
 		}
-		api.httpClient.SetDial(tunnel.NetStack().DialContext)
-		api.httpEndpoint = "_api.internal:4280"
+		clients.httpClient.SetDial(tunnel.NetStack().DialContext)
+		clients.httpEndpoint = "_api.internal:4280"
 	}
 
-	resp.ResourceData = &api
-	resp.DataSourceData = &api
+	api.SetBaseURL(apiBaseUrl)
+	clients.apiClient = api.NewClient(p.token, "terraform-provider-fly", p.version, logger{ctx})
+	api.SetErrorLog(true)
+
+	resp.ResourceData = &clients
+	resp.DataSourceData = &clients
 }
 
 func (p *provider) Resources(ctx context.Context) []func() resource.Resource {
@@ -139,6 +160,7 @@ func (p *provider) Resources(ctx context.Context) []func() resource.Resource {
 		newFlyIpResource,
 		newFlyCertResource,
 		newFlyMachineResource,
+		newFlyDeploymentResource,
 	}
 }
 
