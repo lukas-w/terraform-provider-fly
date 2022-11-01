@@ -51,22 +51,26 @@ func (flyIpResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics)
 				MarkdownDescription: "Name of app to attach",
 				Required:            true,
 				Type:                types.StringType,
+				PlanModifiers:       []tfsdk.AttributePlanModifier{resource.RequiresReplace()},
 			},
 			"id": {
 				MarkdownDescription: "ID of address",
 				Computed:            true,
 				Type:                types.StringType,
+				PlanModifiers:       []tfsdk.AttributePlanModifier{resource.RequiresReplace()},
 			},
 			"type": {
-				MarkdownDescription: "v4 or v6",
+				MarkdownDescription: "v4, v6 or private_v6",
 				Type:                types.StringType,
 				Required:            true,
+				PlanModifiers:       []tfsdk.AttributePlanModifier{resource.RequiresReplace()},
 			},
 			"region": {
 				MarkdownDescription: "region",
 				Type:                types.StringType,
 				Computed:            true,
 				PlanModifiers: tfsdk.AttributePlanModifiers{
+					resource.RequiresReplace(),
 					modifiers.Default(types.String{Value: "global"}),
 				},
 			},
