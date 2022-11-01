@@ -48,6 +48,13 @@ func (flyCertResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostic
 				MarkdownDescription: "Name of app to attach",
 				Required:            true,
 				Type:                types.StringType,
+				PlanModifiers:       []tfsdk.AttributePlanModifier{resource.RequiresReplace()},
+			},
+			"hostname": {
+				MarkdownDescription: "hostname",
+				Type:                types.StringType,
+				Required:            true,
+				PlanModifiers:       []tfsdk.AttributePlanModifier{resource.RequiresReplace()},
 			},
 			"id": {
 				MarkdownDescription: "ID of address",
@@ -73,11 +80,6 @@ func (flyCertResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostic
 				MarkdownDescription: "check",
 				Type:                types.BoolType,
 				Computed:            true,
-			},
-			"hostname": {
-				MarkdownDescription: "hostname",
-				Type:                types.StringType,
-				Required:            true,
 			},
 		},
 	}, nil
@@ -152,10 +154,7 @@ func (cr flyCertResource) Read(ctx context.Context, req resource.ReadRequest, re
 	}
 }
 
-func (cr flyCertResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	resp.Diagnostics.AddError("The fly api does not allow updating certs once created", "Try deleting and then recreating the cert with new options")
-	return
-}
+func (cr flyCertResource) Update(context.Context, resource.UpdateRequest, *resource.UpdateResponse) {}
 
 func (cr flyCertResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	var data flyCertResourceData
