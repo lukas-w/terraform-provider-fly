@@ -176,6 +176,7 @@ func (p *provider) Resources(ctx context.Context) []func() resource.Resource {
 		newFlyMachineResource,
 		newFlyDeploymentResource,
 		newOrganizationResource,
+		newRedisResource,
 	}
 }
 
