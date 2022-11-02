@@ -68,7 +68,10 @@ func (r flyAppResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnosti
 				Computed:            true,
 				MarkdownDescription: "Use the machines platform",
 				Type:                types.BoolType,
-				PlanModifiers:       []tfsdk.AttributePlanModifier{modifiers.Default(types.Bool{Value: false})},
+				PlanModifiers: []tfsdk.AttributePlanModifier{
+					resource.RequiresReplace(),
+					modifiers.Default(types.Bool{Value: false}),
+				},
 			},
 			"orgid": {
 				Computed:            true,
