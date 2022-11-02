@@ -134,6 +134,7 @@ func (r flyAppResource) Create(ctx context.Context, req resource.CreateRequest, 
 		Name:           data.Name.Value,
 		OrganizationId: data.OrgId.Value,
 		Machines:       data.Machines.Value,
+		Runtime:        graphql.RuntimeTypeFirecracker,
 	}
 	mresp, err := graphql.CreateAppMutation(context.Background(), r.gqlClient, createAppInput)
 	if err != nil {
