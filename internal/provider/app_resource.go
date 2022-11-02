@@ -26,7 +26,6 @@ type flyAppResourceData struct {
 	AppUrl   types.String `tfsdk:"appurl"`
 	Id       types.String `tfsdk:"id"`
 	Machines types.Bool   `tfsdk:"machines"`
-	//Secrets types.Map    `tfsdk:"secrets"`
 }
 
 func appDataFromGraphql(f graphql.AppFragment) flyAppResourceData {
@@ -88,12 +87,6 @@ func (r flyAppResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnosti
 				MarkdownDescription: "readonly appUrl",
 				Type:                types.StringType,
 			},
-			//"secrets": {
-			//	Sensitive:           true,
-			//	Optional:            true,
-			//	MarkdownDescription: "App secrets",
-			//	Type:                types.MapType{ElemType: types.StringType},
-			//},
 		},
 	}, nil
 }
@@ -125,7 +118,7 @@ func (r flyAppResource) Create(ctx context.Context, req resource.CreateRequest, 
 		data.OrgId.Value = defaultOrg.Id
 		data.Org.Value = defaultOrg.Name
 	} else {
-		org, err := graphql.Organization(context.Background(), r.gqlClient, data.Org.Value)
+		org, err := graphql.Organization(context.Background(), r.gqlClient, "", "", data.Org.Value)
 		if err != nil {
 			resp.Diagnostics.AddError("Could not resolve organization", err.Error())
 			return
@@ -146,28 +139,6 @@ func (r flyAppResource) Create(ctx context.Context, req resource.CreateRequest, 
 	}
 
 	data = appDataFromGraphql(mresp.CreateApp.App)
-
-	//if len(data.Secrets.Elems) > 0 {
-	//	var rawSecrets map[string]string
-	//	data.Secrets.ElementsAs(context.Background(), &rawSecrets, false)
-	//	var secrets []graphql.SecretInput
-	//	for k, v := range rawSecrets {
-	//		secrets = append(secrets, graphql.SecretInput{
-	//			Key:   k,
-	//			Value: v,
-	//		})
-	//	}
-	//	_, err := graphql.SetSecrets(context.Background(), *r.gqlClient, graphql.SetSecretsInput{
-	//		AppId:      data.Id.Value,
-	//		Secrets:    secrets,
-	//		ReplaceAll: true,
-	//	})
-	//	if err != nil {
-	//		resp.Diagnostics.AddError("Could not set rawSecrets", err.Error())
-	//		return
-	//	}
-	//	data.Secrets = utils.KVToTfMap(rawSecrets, types.StringType)
-	//}
 
 	diags = resp.State.Set(ctx, &data)
 	resp.Diagnostics.Append(diags...)
@@ -201,10 +172,6 @@ func (r flyAppResource) Read(ctx context.Context, req resource.ReadRequest, resp
 
 	data := appDataFromGraphql(query.App)
 
-	//if !state.Secrets.Null && !state.Secrets.Unknown {
-	//	data.Secrets = state.Secrets
-	//}
-
 	diags = resp.State.Set(ctx, &data)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -227,28 +194,6 @@ func (r flyAppResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	resp.Diagnostics.Append(diags...)
 
 	tflog.Info(ctx, fmt.Sprintf("existing: %+v, new: %+v", state, plan))
-
-	//if len(plan.Secrets.Elems) > 0 {
-	//	var rawSecrets map[string]string
-	//	plan.Secrets.ElementsAs(context.Background(), &rawSecrets, false)
-	//	var secrets []graphql.SecretInput
-	//	for k, v := range rawSecrets {
-	//		secrets = append(secrets, graphql.SecretInput{
-	//			Key:   k,
-	//			Value: v,
-	//		})
-	//	}
-	//	_, err := graphql.SetSecrets(context.Background(), r.gqlClient, graphql.SetSecretsInput{
-	//		AppId:      state.Id.Value,
-	//		Secrets:    secrets,
-	//		ReplaceAll: true,
-	//	})
-	//	if err != nil {
-	//		resp.Diagnostics.AddError("Could not set rawSecrets", err.Error())
-	//		return
-	//	}
-	//	state.Secrets = utils.KVToTfMap(rawSecrets, types.StringType)
-	//}
 
 	resp.State.Set(ctx, state)
 
