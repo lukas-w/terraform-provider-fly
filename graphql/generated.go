@@ -186,11 +186,12 @@ func (v *AllocateIpAddressResponse) GetAllocateIpAddress() AllocateIpAddressAllo
 
 // AppFragment includes the GraphQL fields of App requested by the fragment AppFragment.
 type AppFragment struct {
-	Id              string                  `json:"id"`
-	Name            string                  `json:"name"`
-	Organization    AppFragmentOrganization `json:"organization"`
-	AppUrl          string                  `json:"appUrl"`
-	PlatformVersion PlatformVersionEnum     `json:"platformVersion"`
+	Id              string                     `json:"id"`
+	Name            string                     `json:"name"`
+	Organization    AppFragmentOrganization    `json:"organization"`
+	Secrets         []AppFragmentSecretsSecret `json:"secrets"`
+	AppUrl          string                     `json:"appUrl"`
+	PlatformVersion PlatformVersionEnum        `json:"platformVersion"`
 }
 
 // GetId returns AppFragment.Id, and is useful for accessing the field via an interface.
@@ -201,6 +202,9 @@ func (v *AppFragment) GetName() string { return v.Name }
 
 // GetOrganization returns AppFragment.Organization, and is useful for accessing the field via an interface.
 func (v *AppFragment) GetOrganization() AppFragmentOrganization { return v.Organization }
+
+// GetSecrets returns AppFragment.Secrets, and is useful for accessing the field via an interface.
+func (v *AppFragment) GetSecrets() []AppFragmentSecretsSecret { return v.Secrets }
 
 // GetAppUrl returns AppFragment.AppUrl, and is useful for accessing the field via an interface.
 func (v *AppFragment) GetAppUrl() string { return v.AppUrl }
@@ -219,6 +223,22 @@ func (v *AppFragmentOrganization) GetId() string { return v.Id }
 
 // GetSlug returns AppFragmentOrganization.Slug, and is useful for accessing the field via an interface.
 func (v *AppFragmentOrganization) GetSlug() string { return v.Slug }
+
+// AppFragmentSecretsSecret includes the requested fields of the GraphQL type Secret.
+type AppFragmentSecretsSecret struct {
+	Name      string    `json:"name"`
+	CreatedAt time.Time `json:"createdAt"`
+	Digest    string    `json:"digest"`
+}
+
+// GetName returns AppFragmentSecretsSecret.Name, and is useful for accessing the field via an interface.
+func (v *AppFragmentSecretsSecret) GetName() string { return v.Name }
+
+// GetCreatedAt returns AppFragmentSecretsSecret.CreatedAt, and is useful for accessing the field via an interface.
+func (v *AppFragmentSecretsSecret) GetCreatedAt() time.Time { return v.CreatedAt }
+
+// GetDigest returns AppFragmentSecretsSecret.Digest, and is useful for accessing the field via an interface.
+func (v *AppFragmentSecretsSecret) GetDigest() string { return v.Digest }
 
 type AutoscaleRegionConfigInput struct {
 	Code     string `json:"code"`
@@ -1764,6 +1784,11 @@ fragment AppFragment on App {
 		id
 		slug
 	}
+	secrets {
+		name
+		createdAt
+		digest
+	}
 	appUrl
 	platformVersion
 }
@@ -2006,6 +2031,11 @@ fragment AppFragment on App {
 	organization {
 		id
 		slug
+	}
+	secrets {
+		name
+		createdAt
+		digest
 	}
 	appUrl
 	platformVersion

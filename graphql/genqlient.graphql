@@ -55,6 +55,11 @@ fragment AppFragment on App {
         id
         slug
     }
+    secrets {
+        name
+        createdAt
+        digest
+    }
     appUrl
     platformVersion
 }
