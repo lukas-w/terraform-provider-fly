@@ -52,21 +52,18 @@ type providerApi struct {
 	apiClient    api.Client
 }
 
-func (c *providerApi) configure(providerData any, diags diag.Diagnostics) {
-	p, ok := providerData.(*providerApi)
+func (c *providerApi) configure(providerData any, diags *diag.Diagnostics) {
+	if providerData == nil {
+		return
+	}
 
-	if !ok {
+	if p, ok := providerData.(*providerApi); ok {
+		*c = *p
+	} else {
 		diags.AddError(
 			"Unexpected Provider Instance Type",
 			fmt.Sprintf("While creating the data source or resource, an unexpected clients type (%T) was received. This is always a bug in the clients code and should be reported to the clients developers.", p),
 		)
-	} else if p == nil {
-		diags.AddError(
-			"Unexpected Provider Instance Type",
-			"While creating the data source or resource, an unexpected empty clients instance was received. This is always a bug in the clients code and should be reported to the clients developers.",
-		)
-	} else {
-		*c = *p
 	}
 }
 

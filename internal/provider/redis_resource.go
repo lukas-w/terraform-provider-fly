@@ -119,7 +119,7 @@ func (r redisResource) Create(ctx context.Context, req resource.CreateRequest, r
 	}
 
 	// Resolve plan
-	planId := r.resolvePlan(ctx, data.Plan.Value, resp.Diagnostics)
+	planId := r.resolvePlan(ctx, data.Plan.Value, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -141,11 +141,11 @@ func (r redisResource) Create(ctx context.Context, req resource.CreateRequest, r
 	data.Name = types.String{Value: mresp.CreateAddOn.AddOn.Name}
 	data.PublicUrl = types.String{Value: mresp.CreateAddOn.AddOn.PublicUrl}
 
-	r.get(ctx, &data, resp.Diagnostics)
+	r.get(ctx, &data, &resp.Diagnostics)
 	resp.Diagnostics.Append(resp.State.Set(ctx, data)...)
 }
 
-func (r redisResource) resolvePlan(ctx context.Context, name string, diags diag.Diagnostics) string {
+func (r redisResource) resolvePlan(ctx context.Context, name string, diags *diag.Diagnostics) string {
 	qresp, err := gql.ListAddOnPlans(ctx, r.gqlClient)
 	if err != nil {
 		diags.AddError("Error getting addon plans", err.Error())
@@ -163,7 +163,7 @@ func (r redisResource) resolvePlan(ctx context.Context, name string, diags diag.
 func (r redisResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	var data addonResourceModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
-	if !r.get(ctx, &data, resp.Diagnostics) {
+	if !r.get(ctx, &data, &resp.Diagnostics) {
 		resp.State.RemoveResource(ctx)
 		return
 	}
@@ -173,7 +173,7 @@ func (r redisResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 	resp.Diagnostics.Append(req.State.Set(ctx, data)...)
 }
 
-func (r redisResource) get(ctx context.Context, data *addonResourceModel, diag diag.Diagnostics) bool {
+func (r redisResource) get(ctx context.Context, data *addonResourceModel, diag *diag.Diagnostics) bool {
 	qresp, err := gql.GetAddOn(ctx, r.gqlClient, data.Name.Value)
 	if err != nil {
 		var errList gqlerror.List
@@ -209,7 +209,7 @@ func (r redisResource) Update(ctx context.Context, req resource.UpdateRequest, r
 		return
 	}
 
-	planId := r.resolvePlan(ctx, plan.Plan.Value, resp.Diagnostics)
+	planId := r.resolvePlan(ctx, plan.Plan.Value, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}

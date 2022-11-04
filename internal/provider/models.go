@@ -11,7 +11,7 @@ type flyDataSource struct {
 }
 
 func (d *flyDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
-	d.configure(req.ProviderData, resp.Diagnostics)
+	d.configure(req.ProviderData, &resp.Diagnostics)
 }
 
 type flyResource struct {
@@ -19,7 +19,7 @@ type flyResource struct {
 }
 
 func (r *flyResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
-	r.configure(req.ProviderData, resp.Diagnostics)
+	r.configure(req.ProviderData, &resp.Diagnostics)
 }
 
 type appDataSource struct {
