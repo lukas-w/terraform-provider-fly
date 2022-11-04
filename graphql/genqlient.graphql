@@ -303,8 +303,22 @@ query GetSecrets($name: String!) {
     }
 }
 
-query Organization($slug: String) {
-    organization(slug: $slug) {
+query Organization($id: ID, $name: String, $slug: String) {
+    organization(id: $id, name: $name, slug: $slug) {
         id
+        slug
+        name
+        type
+        members {
+            edges {
+                node {
+                    id
+                    name
+                    email
+                }
+                joinedAt
+                role
+            }
+        }
     }
 }

@@ -141,7 +141,7 @@ func (p *provider) Configure(ctx context.Context, req tfsdkprovider.ConfigureReq
 	clients.gqlClient = *(*gqlClient)(&client)
 
 	if data.UseInternalTunnel.Value {
-		org, err := providerGraphql.Organization(context.Background(), client, data.InternalTunnelOrg.Value)
+		org, err := providerGraphql.Organization(context.Background(), client, "", "", data.InternalTunnelOrg.Value)
 		if err != nil {
 			resp.Diagnostics.AddError("Could not resolve organization", err.Error())
 			return
@@ -182,6 +182,7 @@ func (p *provider) DataSources(ctx context.Context) []func() datasource.DataSour
 		newAppDataSource,
 		newCertDataSource,
 		newIpDataSource,
+		newOrganizationDataSource,
 	}
 }
 

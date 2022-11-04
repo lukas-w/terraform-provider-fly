@@ -1054,13 +1054,92 @@ type IpAddressQueryResponse struct {
 // GetApp returns IpAddressQueryResponse.App, and is useful for accessing the field via an interface.
 func (v *IpAddressQueryResponse) GetApp() IpAddressQueryApp { return v.App }
 
+type OrganizationMemberRole string
+
+const (
+	OrganizationMemberRoleAdmin  OrganizationMemberRole = "ADMIN"
+	OrganizationMemberRoleMember OrganizationMemberRole = "MEMBER"
+)
+
 // OrganizationOrganization includes the requested fields of the GraphQL type Organization.
 type OrganizationOrganization struct {
-	Id string `json:"id"`
+	Id      string                                                           `json:"id"`
+	Slug    string                                                           `json:"slug"`
+	Name    string                                                           `json:"name"`
+	Type    OrganizationType                                                 `json:"type"`
+	Members OrganizationOrganizationMembersOrganizationMembershipsConnection `json:"members"`
 }
 
 // GetId returns OrganizationOrganization.Id, and is useful for accessing the field via an interface.
 func (v *OrganizationOrganization) GetId() string { return v.Id }
+
+// GetSlug returns OrganizationOrganization.Slug, and is useful for accessing the field via an interface.
+func (v *OrganizationOrganization) GetSlug() string { return v.Slug }
+
+// GetName returns OrganizationOrganization.Name, and is useful for accessing the field via an interface.
+func (v *OrganizationOrganization) GetName() string { return v.Name }
+
+// GetType returns OrganizationOrganization.Type, and is useful for accessing the field via an interface.
+func (v *OrganizationOrganization) GetType() OrganizationType { return v.Type }
+
+// GetMembers returns OrganizationOrganization.Members, and is useful for accessing the field via an interface.
+func (v *OrganizationOrganization) GetMembers() OrganizationOrganizationMembersOrganizationMembershipsConnection {
+	return v.Members
+}
+
+// OrganizationOrganizationMembersOrganizationMembershipsConnection includes the requested fields of the GraphQL type OrganizationMembershipsConnection.
+type OrganizationOrganizationMembersOrganizationMembershipsConnection struct {
+	Edges []OrganizationOrganizationMembersOrganizationMembershipsConnectionEdgesOrganizationMembershipsEdge `json:"edges"`
+}
+
+// GetEdges returns OrganizationOrganizationMembersOrganizationMembershipsConnection.Edges, and is useful for accessing the field via an interface.
+func (v *OrganizationOrganizationMembersOrganizationMembershipsConnection) GetEdges() []OrganizationOrganizationMembersOrganizationMembershipsConnectionEdgesOrganizationMembershipsEdge {
+	return v.Edges
+}
+
+// OrganizationOrganizationMembersOrganizationMembershipsConnectionEdgesOrganizationMembershipsEdge includes the requested fields of the GraphQL type OrganizationMembershipsEdge.
+type OrganizationOrganizationMembersOrganizationMembershipsConnectionEdgesOrganizationMembershipsEdge struct {
+	Node     OrganizationOrganizationMembersOrganizationMembershipsConnectionEdgesOrganizationMembershipsEdgeNodeUser `json:"node"`
+	JoinedAt time.Time                                                                                                `json:"joinedAt"`
+	Role     OrganizationMemberRole                                                                                   `json:"role"`
+}
+
+// GetNode returns OrganizationOrganizationMembersOrganizationMembershipsConnectionEdgesOrganizationMembershipsEdge.Node, and is useful for accessing the field via an interface.
+func (v *OrganizationOrganizationMembersOrganizationMembershipsConnectionEdgesOrganizationMembershipsEdge) GetNode() OrganizationOrganizationMembersOrganizationMembershipsConnectionEdgesOrganizationMembershipsEdgeNodeUser {
+	return v.Node
+}
+
+// GetJoinedAt returns OrganizationOrganizationMembersOrganizationMembershipsConnectionEdgesOrganizationMembershipsEdge.JoinedAt, and is useful for accessing the field via an interface.
+func (v *OrganizationOrganizationMembersOrganizationMembershipsConnectionEdgesOrganizationMembershipsEdge) GetJoinedAt() time.Time {
+	return v.JoinedAt
+}
+
+// GetRole returns OrganizationOrganizationMembersOrganizationMembershipsConnectionEdgesOrganizationMembershipsEdge.Role, and is useful for accessing the field via an interface.
+func (v *OrganizationOrganizationMembersOrganizationMembershipsConnectionEdgesOrganizationMembershipsEdge) GetRole() OrganizationMemberRole {
+	return v.Role
+}
+
+// OrganizationOrganizationMembersOrganizationMembershipsConnectionEdgesOrganizationMembershipsEdgeNodeUser includes the requested fields of the GraphQL type User.
+type OrganizationOrganizationMembersOrganizationMembershipsConnectionEdgesOrganizationMembershipsEdgeNodeUser struct {
+	Id    string `json:"id"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
+}
+
+// GetId returns OrganizationOrganizationMembersOrganizationMembershipsConnectionEdgesOrganizationMembershipsEdgeNodeUser.Id, and is useful for accessing the field via an interface.
+func (v *OrganizationOrganizationMembersOrganizationMembershipsConnectionEdgesOrganizationMembershipsEdgeNodeUser) GetId() string {
+	return v.Id
+}
+
+// GetName returns OrganizationOrganizationMembersOrganizationMembershipsConnectionEdgesOrganizationMembershipsEdgeNodeUser.Name, and is useful for accessing the field via an interface.
+func (v *OrganizationOrganizationMembersOrganizationMembershipsConnectionEdgesOrganizationMembershipsEdgeNodeUser) GetName() string {
+	return v.Name
+}
+
+// GetEmail returns OrganizationOrganizationMembersOrganizationMembershipsConnectionEdgesOrganizationMembershipsEdgeNodeUser.Email, and is useful for accessing the field via an interface.
+func (v *OrganizationOrganizationMembersOrganizationMembershipsConnectionEdgesOrganizationMembershipsEdgeNodeUser) GetEmail() string {
+	return v.Email
+}
 
 // OrganizationResponse is returned by Organization on success.
 type OrganizationResponse struct {
@@ -1069,6 +1148,13 @@ type OrganizationResponse struct {
 
 // GetOrganization returns OrganizationResponse.Organization, and is useful for accessing the field via an interface.
 func (v *OrganizationResponse) GetOrganization() OrganizationOrganization { return v.Organization }
+
+type OrganizationType string
+
+const (
+	OrganizationTypePersonal OrganizationType = "PERSONAL"
+	OrganizationTypeShared   OrganizationType = "SHARED"
+)
 
 // OrgsQueryOrganizationsOrganizationConnection includes the requested fields of the GraphQL type OrganizationConnection.
 type OrgsQueryOrganizationsOrganizationConnection struct {
@@ -1573,8 +1659,16 @@ func (v *__IpAddressQueryInput) GetAddr() string { return v.Addr }
 
 // __OrganizationInput is used internally by genqlient
 type __OrganizationInput struct {
+	Id   string `json:"id"`
+	Name string `json:"name"`
 	Slug string `json:"slug"`
 }
+
+// GetId returns __OrganizationInput.Id, and is useful for accessing the field via an interface.
+func (v *__OrganizationInput) GetId() string { return v.Id }
+
+// GetName returns __OrganizationInput.Name, and is useful for accessing the field via an interface.
+func (v *__OrganizationInput) GetName() string { return v.Name }
 
 // GetSlug returns __OrganizationInput.Slug, and is useful for accessing the field via an interface.
 func (v *__OrganizationInput) GetSlug() string { return v.Slug }
@@ -2252,18 +2346,36 @@ query IpAddressQuery ($app: String, $addr: String!) {
 func Organization(
 	ctx context.Context,
 	client graphql.Client,
+	id string,
+	name string,
 	slug string,
 ) (*OrganizationResponse, error) {
 	req := &graphql.Request{
 		OpName: "Organization",
 		Query: `
-query Organization ($slug: String) {
-	organization(slug: $slug) {
+query Organization ($id: ID, $name: String, $slug: String) {
+	organization(id: $id, name: $name, slug: $slug) {
 		id
+		slug
+		name
+		type
+		members {
+			edges {
+				node {
+					id
+					name
+					email
+				}
+				joinedAt
+				role
+			}
+		}
 	}
 }
 `,
 		Variables: &__OrganizationInput{
+			Id:   id,
+			Name: name,
 			Slug: slug,
 		},
 	}
