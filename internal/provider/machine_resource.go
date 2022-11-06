@@ -2,10 +2,11 @@ package provider
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"github.com/fly-apps/terraform-provider-fly/internal/provider/modifiers"
 	"github.com/fly-apps/terraform-provider-fly/internal/utils"
 	"github.com/fly-apps/terraform-provider-fly/pkg/apiv1"
+	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -53,6 +54,87 @@ type flyMachineResourceData struct {
 
 	Mounts   []TfMachineMount `tfsdk:"mounts"`
 	Services []TfService      `tfsdk:"services"`
+}
+
+func (d *flyMachineResourceData) updateFromApiData(machine apiv1.MachineResponse) {
+	d.Name = types.String{Value: machine.Name}
+	d.Region = types.String{Value: machine.Region}
+	d.Id = types.String{Value: machine.ID}
+	d.PrivateIP = types.String{Value: machine.PrivateIP}
+	d.Image = types.String{Value: machine.Config.Image}
+	d.Cpus = types.Int64{Value: int64(machine.Config.Guest.Cpus)}
+	d.MemoryMb = types.Int64{Value: int64(machine.Config.Guest.MemoryMb)}
+	d.CpuType = types.String{Value: machine.Config.Guest.CPUKind}
+	d.Cmd = machine.Config.Init.Cmd
+	d.Entrypoint = machine.Config.Init.Entrypoint
+	d.Exec = machine.Config.Init.Exec
+	d.Env = utils.KVToTfMap(machine.Config.Env, types.StringType)
+
+	tfServices := ServicesToTfServices(machine.Config.Services)
+	if d.Services == nil && len(tfServices) == 0 {
+		tfServices = nil
+	}
+	d.Services = tfServices
+
+	if len(machine.Config.Mounts) > 0 {
+		var mounts []TfMachineMount
+		for _, m := range machine.Config.Mounts {
+			mounts = append(mounts, TfMachineMount{
+				Encrypted: types.Bool{Value: m.Encrypted},
+				Path:      types.String{Value: m.Path},
+				SizeGb:    types.Int64{Value: int64(m.SizeGb)},
+				Volume:    types.String{Value: m.Volume},
+			})
+		}
+		d.Mounts = mounts
+	}
+}
+
+func (d *flyMachineResourceData) makeMachineRequest() apiv1.MachineCreateOrUpdateRequest {
+	conf := apiv1.MachineConfig{
+		Image:    d.Image.Value,
+		Services: TfServicesToServices(d.Services),
+		Init: apiv1.InitConfig{
+			Cmd:        d.Cmd,
+			Exec:       d.Exec,
+			Entrypoint: d.Entrypoint,
+		},
+	}
+
+	if !d.Cpus.Unknown {
+		conf.Guest.Cpus = int(d.Cpus.Value)
+	}
+	if !d.CpuType.Unknown {
+		conf.Guest.CpuType = apiv1.CpuType(d.CpuType.Value)
+	}
+	if !d.MemoryMb.Unknown {
+		conf.Guest.MemoryMb = int(d.MemoryMb.Value)
+	}
+
+	if !d.Env.Unknown {
+		var env map[string]string
+		d.Env.ElementsAs(context.Background(), &env, false)
+		conf.Env = env
+	}
+
+	if len(d.Mounts) > 0 {
+		var mounts []apiv1.MachineMount
+		for _, m := range d.Mounts {
+			mounts = append(mounts, apiv1.MachineMount{
+				Encrypted: m.Encrypted.Value,
+				Path:      m.Path.Value,
+				SizeGb:    int(m.SizeGb.Value),
+				Volume:    m.Volume.Value,
+			})
+		}
+		conf.Mounts = mounts
+	}
+
+	return apiv1.MachineCreateOrUpdateRequest{
+		Name:   d.Name.Value,
+		Region: d.Region.Value,
+		Config: conf,
+	}
 }
 
 type TfMachineMount struct {
@@ -130,18 +212,22 @@ func (flyMachineResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnos
 				Computed:            true,
 				Optional:            true,
 				Type:                types.StringType,
+				PlanModifiers:       []tfsdk.AttributePlanModifier{modifiers.Default(types.String{Value: string(apiv1.CpuTypeShared)})},
 			},
 			"cpus": {
 				MarkdownDescription: "cpu count",
 				Computed:            true,
 				Optional:            true,
 				Type:                types.Int64Type,
+				PlanModifiers:       []tfsdk.AttributePlanModifier{modifiers.Default(types.Int64{Value: 1})},
+				Validators:          []tfsdk.AttributeValidator{int64validator.AtLeast(1)},
 			},
 			"memorymb": {
 				MarkdownDescription: "memory mb",
 				Computed:            true,
 				Optional:            true,
 				Type:                types.Int64Type,
+				PlanModifiers:       []tfsdk.AttributePlanModifier{modifiers.Default(types.Int64{Value: 256})},
 			},
 			"env": {
 				MarkdownDescription: "Optional environment variables, keys and values must be strings",
@@ -211,12 +297,13 @@ func (flyMachineResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnos
 	}, nil
 }
 
-func (mr flyMachineResource) ValidateOpenTunnel() (bool, error) {
+func (mr flyMachineResource) ValidateOpenTunnel(diags diag.Diagnostics) bool {
 	_, err := mr.httpClient.R().Get(fmt.Sprintf("http://%s", mr.httpEndpoint))
 	if err != nil {
-		return false, errors.New("can't connect to the api, is the tunnel open? :)")
+		diags.AddError("fly wireguard tunnel must be open", "can't connect to the api, is the tunnel open? :)")
+		return false
 	}
-	return true, nil
+	return true
 }
 
 func TfServicesToServices(input []TfService) []apiv1.Service {
@@ -252,364 +339,116 @@ func ServicesToTfServices(input []apiv1.Service) []TfService {
 				handlers = append(handlers, types.String{Value: k})
 			}
 			tfports = append(tfports, TfPort{
-				Port:     types.Int64{Value: j.Port},
+				Port:     types.Int64{Value: int64(j.Port)},
 				Handlers: handlers,
 			})
 		}
 		tfservices = append(tfservices, TfService{
 			Ports:        tfports,
 			Protocol:     types.String{Value: s.Protocol},
-			InternalPort: types.Int64{Value: s.InternalPort},
+			InternalPort: types.Int64{Value: int64(s.InternalPort)},
 		})
 	}
 	return tfservices
 }
 
 func (mr flyMachineResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	_, err := mr.ValidateOpenTunnel()
-	if err != nil {
-		resp.Diagnostics.AddError("fly wireguard tunnel must be open", err.Error())
+	if !mr.ValidateOpenTunnel(resp.Diagnostics) {
 		return
 	}
 
 	var data flyMachineResourceData
 
-	diags := req.Plan.Get(ctx, &data)
-	resp.Diagnostics.Append(diags...)
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	services := TfServicesToServices(data.Services)
-	createReq := apiv1.MachineCreateOrUpdateRequest{
-		Name:   data.Name.Value,
-		Region: data.Region.Value,
-		Config: apiv1.MachineConfig{
-			Image:    data.Image.Value,
-			Services: services,
-			Init: apiv1.InitConfig{
-				Cmd:        data.Cmd,
-				Entrypoint: data.Entrypoint,
-				Exec:       data.Exec,
-			},
-		},
-	}
-
-	if !data.Cpus.Unknown {
-		createReq.Config.Guest.Cpus = int(data.Cpus.Value)
-	}
-	if !data.CpuType.Unknown {
-		createReq.Config.Guest.CpuType = data.CpuType.Value
-	}
-	if !data.MemoryMb.Unknown {
-		createReq.Config.Guest.MemoryMb = int(data.MemoryMb.Value)
-	}
-
-	if !data.Env.Unknown {
-		var env map[string]string
-		data.Env.ElementsAs(context.Background(), &env, false)
-		createReq.Config.Env = env
-	}
-	if len(data.Mounts) > 0 {
-		var mounts []apiv1.MachineMount
-		for _, m := range data.Mounts {
-			mounts = append(mounts, apiv1.MachineMount{
-				Encrypted: m.Encrypted.Value,
-				Path:      m.Path.Value,
-				SizeGb:    int(m.SizeGb.Value),
-				Volume:    m.Volume.Value,
-			})
-		}
-		createReq.Config.Mounts = mounts
-	}
-
 	machineAPI := apiv1.NewMachineAPI(&mr.httpClient, mr.httpEndpoint)
-
-	var newMachine apiv1.MachineResponse
-	err = machineAPI.CreateMachine(createReq, data.App.Value, &newMachine)
+	var machine apiv1.MachineResponse
+	err := machineAPI.CreateMachine(data.makeMachineRequest(), data.App.Value, &machine)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to create machine", err.Error())
 		return
 	}
 
-	tflog.Info(ctx, fmt.Sprintf("%+v", newMachine))
+	tflog.Info(ctx, fmt.Sprintf("%+v", machine))
 
-	env := utils.KVToTfMap(newMachine.Config.Env, types.StringType)
+	data.updateFromApiData(machine)
 
-	tfservices := ServicesToTfServices(newMachine.Config.Services)
-
-	if data.Services == nil && len(tfservices) == 0 {
-		tfservices = nil
-	}
-
-	data = flyMachineResourceData{
-		Name:       types.String{Value: newMachine.Name},
-		Region:     types.String{Value: newMachine.Region},
-		Id:         types.String{Value: newMachine.ID},
-		App:        types.String{Value: data.App.Value},
-		PrivateIP:  types.String{Value: newMachine.PrivateIP},
-		Image:      types.String{Value: newMachine.Config.Image},
-		Cpus:       types.Int64{Value: int64(newMachine.Config.Guest.Cpus)},
-		MemoryMb:   types.Int64{Value: int64(newMachine.Config.Guest.MemoryMb)},
-		CpuType:    types.String{Value: newMachine.Config.Guest.CPUKind},
-		Cmd:        newMachine.Config.Init.Cmd,
-		Entrypoint: newMachine.Config.Init.Entrypoint,
-		Exec:       newMachine.Config.Init.Exec,
-		Env:        env,
-		Services:   tfservices,
-	}
-
-	if len(newMachine.Config.Mounts) > 0 {
-		var tfmounts []TfMachineMount
-		for _, m := range newMachine.Config.Mounts {
-			tfmounts = append(tfmounts, TfMachineMount{
-				Encrypted: types.Bool{Value: m.Encrypted},
-				Path:      types.String{Value: m.Path},
-				SizeGb:    types.Int64{Value: int64(m.SizeGb)},
-				Volume:    types.String{Value: m.Volume},
-			})
-		}
-		data.Mounts = tfmounts
-	}
-
-	err = machineAPI.WaitForMachine(data.App.Value, data.Id.Value, newMachine.InstanceID)
+	err = machineAPI.WaitForMachine(data.App.Value, machine.ID, machine.InstanceID)
 	if err != nil {
 		//FIXME(?): For now we just assume that the orchestrator is in fact going to faithfully execute our request
 		tflog.Info(ctx, "Waiting errored")
 	}
 
-	diags = resp.State.Set(ctx, &data)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
 func (mr flyMachineResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	_, err := mr.ValidateOpenTunnel()
-	if err != nil {
-		resp.Diagnostics.AddError("fly wireguard tunnel must be open", err.Error())
+	if !mr.ValidateOpenTunnel(resp.Diagnostics) {
+		return
 	}
 
 	var data flyMachineResourceData
-
-	diags := req.State.Get(ctx, &data)
-	resp.Diagnostics.Append(diags...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 
 	machineAPI := apiv1.NewMachineAPI(&mr.httpClient, mr.httpEndpoint)
 
 	var machine apiv1.MachineResponse
-
-	_, err = machineAPI.ReadMachine(data.App.Value, data.Id.Value, &machine)
+	_, err := machineAPI.ReadMachine(data.App.Value, data.Id.Value, &machine)
 	if err != nil {
-		resp.Diagnostics.AddError("Failed to create machine", err.Error())
+		resp.Diagnostics.AddError("Failed to get machine", err.Error())
 		return
 	}
 
-	env := utils.KVToTfMap(machine.Config.Env, types.StringType)
-
-	tfservices := ServicesToTfServices(machine.Config.Services)
-
-	if data.Services == nil && len(tfservices) == 0 {
-		tfservices = nil
-	}
-
-	data = flyMachineResourceData{
-		Name:       types.String{Value: machine.Name},
-		Id:         types.String{Value: machine.ID},
-		Region:     types.String{Value: machine.Region},
-		App:        types.String{Value: data.App.Value},
-		PrivateIP:  types.String{Value: machine.PrivateIP},
-		Image:      types.String{Value: machine.Config.Image},
-		Cpus:       types.Int64{Value: int64(machine.Config.Guest.Cpus)},
-		MemoryMb:   types.Int64{Value: int64(machine.Config.Guest.MemoryMb)},
-		CpuType:    types.String{Value: machine.Config.Guest.CPUKind},
-		Cmd:        machine.Config.Init.Cmd,
-		Entrypoint: machine.Config.Init.Entrypoint,
-		Exec:       machine.Config.Init.Exec,
-		Env:        env,
-		Services:   tfservices,
-	}
-
-	if len(machine.Config.Mounts) > 0 {
-		var tfmounts []TfMachineMount
-		for _, m := range machine.Config.Mounts {
-			tfmounts = append(tfmounts, TfMachineMount{
-				Encrypted: types.Bool{Value: m.Encrypted},
-				Path:      types.String{Value: m.Path},
-				SizeGb:    types.Int64{Value: int64(m.SizeGb)},
-				Volume:    types.String{Value: m.Volume},
-			})
-		}
-		data.Mounts = tfmounts
-	}
-
-	diags = resp.State.Set(ctx, &data)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
+	data.updateFromApiData(machine)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
 func (mr flyMachineResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	_, err := mr.ValidateOpenTunnel()
-	if err != nil {
-		resp.Diagnostics.AddError("fly wireguard tunnel must be open", err.Error())
+	if !mr.ValidateOpenTunnel(resp.Diagnostics) {
 		return
 	}
 
-	var plan flyMachineResourceData
-
-	diags := req.Plan.Get(ctx, &plan)
-	resp.Diagnostics.Append(diags...)
-
+	var plan, state flyMachineResourceData
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	var state flyMachineResourceData
-
-	diags = resp.State.Get(ctx, &state)
-	resp.Diagnostics.Append(diags...)
-
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	if !plan.Name.Unknown && plan.Name.Value != state.Name.Value {
-		resp.Diagnostics.AddError("Can't mutate name of existing machine", "Can't switch name "+state.Name.Value+" to "+plan.Name.Value)
-	}
-	if !state.Region.Unknown && plan.Region.Value != state.Region.Value {
-		resp.Diagnostics.AddError("Can't mutate region of existing machine", "Can't switch region "+state.Name.Value+" to "+plan.Name.Value)
-	}
-
-	services := TfServicesToServices(plan.Services)
-
-	updateReq := apiv1.MachineCreateOrUpdateRequest{
-		Name:   plan.Name.Value,
-		Region: state.Region.Value,
-		Config: apiv1.MachineConfig{
-			Image:    plan.Image.Value,
-			Services: services,
-			Init: apiv1.InitConfig{
-				Cmd:        plan.Cmd,
-				Entrypoint: plan.Entrypoint,
-				Exec:       plan.Exec,
-			},
-		},
-	}
-
-	if !plan.Cpus.Unknown {
-		updateReq.Config.Guest.Cpus = int(plan.Cpus.Value)
-	}
-	if !plan.CpuType.Unknown {
-		updateReq.Config.Guest.CpuType = plan.CpuType.Value
-	}
-	if !plan.MemoryMb.Unknown {
-		updateReq.Config.Guest.MemoryMb = int(plan.MemoryMb.Value)
-	}
-	if plan.Env.Null {
-		env := map[string]string{}
-		updateReq.Config.Env = env
-	} else if !plan.Env.Unknown {
-		var env map[string]string
-		plan.Env.ElementsAs(context.Background(), &env, false)
-		updateReq.Config.Env = env
-	} else if !state.Env.Unknown {
-		updateReq.Config.Env = map[string]string{}
-	}
-
-	if len(plan.Mounts) > 0 {
-		var mounts []apiv1.MachineMount
-		for _, m := range plan.Mounts {
-			mounts = append(mounts, apiv1.MachineMount{
-				Encrypted: m.Encrypted.Value,
-				Path:      m.Path.Value,
-				SizeGb:    int(m.SizeGb.Value),
-				Volume:    m.Volume.Value,
-			})
-		}
-		updateReq.Config.Mounts = mounts
-	}
-
-	machineApi := apiv1.NewMachineAPI(&mr.httpClient, mr.httpEndpoint)
-
-	var updatedMachine apiv1.MachineResponse
-
-	err = machineApi.UpdateMachine(updateReq, state.App.Value, state.Id.Value, &updatedMachine)
+	machineAPI := apiv1.NewMachineAPI(&mr.httpClient, mr.httpEndpoint)
+	var machine apiv1.MachineResponse
+	err := machineAPI.UpdateMachine(plan.makeMachineRequest(), state.App.Value, state.Id.Value, &machine)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to update machine", err.Error())
 		return
 	}
 
-	env := utils.KVToTfMap(updatedMachine.Config.Env, types.StringType)
+	state.updateFromApiData(machine)
 
-	tfservices := ServicesToTfServices(updatedMachine.Config.Services)
-
-	state = flyMachineResourceData{
-		Name:       types.String{Value: updatedMachine.Name},
-		Region:     types.String{Value: updatedMachine.Region},
-		Id:         types.String{Value: updatedMachine.ID},
-		App:        types.String{Value: state.App.Value},
-		PrivateIP:  types.String{Value: updatedMachine.PrivateIP},
-		Image:      types.String{Value: updatedMachine.Config.Image},
-		Cpus:       types.Int64{Value: int64(updatedMachine.Config.Guest.Cpus)},
-		MemoryMb:   types.Int64{Value: int64(updatedMachine.Config.Guest.MemoryMb)},
-		CpuType:    types.String{Value: updatedMachine.Config.Guest.CPUKind},
-		Cmd:        updatedMachine.Config.Init.Cmd,
-		Entrypoint: updatedMachine.Config.Init.Entrypoint,
-		Exec:       updatedMachine.Config.Init.Exec,
-		Env:        env,
-		Services:   tfservices,
-	}
-
-	if len(updatedMachine.Config.Mounts) > 0 {
-		var tfmounts []TfMachineMount
-		for _, m := range updatedMachine.Config.Mounts {
-			tfmounts = append(tfmounts, TfMachineMount{
-				Encrypted: types.Bool{Value: m.Encrypted},
-				Path:      types.String{Value: m.Path},
-				SizeGb:    types.Int64{Value: int64(m.SizeGb)},
-				Volume:    types.String{Value: m.Volume},
-			})
-		}
-		state.Mounts = tfmounts
-	}
-
-	err = machineApi.WaitForMachine(state.App.Value, state.Id.Value, updatedMachine.InstanceID)
+	err = machineAPI.WaitForMachine(state.App.Value, machine.ID, machine.InstanceID)
 	if err != nil {
 		tflog.Info(ctx, "Waiting errored")
 	}
 
-	resp.State.Set(ctx, state)
-	if resp.Diagnostics.HasError() {
-		return
-	}
+	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
 func (mr flyMachineResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	var data flyMachineResourceData
-
-	diags := req.State.Get(ctx, &data)
-	resp.Diagnostics.Append(diags...)
-
-	_, err := mr.ValidateOpenTunnel()
-	if err != nil {
-		resp.Diagnostics.AddError("fly wireguard tunnel must be open", err.Error())
+	if !mr.ValidateOpenTunnel(resp.Diagnostics) {
+		return
 	}
 
-	machineApi := apiv1.NewMachineAPI(&mr.httpClient, mr.httpEndpoint)
+	var data flyMachineResourceData
+	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 
-	err = machineApi.DeleteMachine(data.App.Value, data.Id.Value, 50)
+	machineAPI := apiv1.NewMachineAPI(&mr.httpClient, mr.httpEndpoint)
 
+	err := machineAPI.DeleteMachine(data.App.Value, data.Id.Value, 50)
 	if err != nil {
 		resp.Diagnostics.AddError("Machine delete failed", err.Error())
-		return
-	}
-
-	resp.State.RemoveResource(ctx)
-	if resp.Diagnostics.HasError() {
-		return
 	}
 }
 

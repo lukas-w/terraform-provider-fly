@@ -50,10 +50,17 @@ type MachineConfig struct {
 	Guest    GuestConfig       `json:"guest,omitempty"`
 }
 
+type CpuType string
+
+const (
+	CpuTypeShared    CpuType = "shared"
+	CpuTypeDedicated CpuType = "dedicated"
+)
+
 type GuestConfig struct {
-	Cpus     int    `json:"cpus,omitempty"`
-	MemoryMb int    `json:"memory_mb,omitempty"`
-	CpuType  string `json:"cpu_kind,omitempty"`
+	Cpus     int     `json:"cpus,omitempty"`
+	MemoryMb int     `json:"memory_mb,omitempty"`
+	CpuType  CpuType `json:"cpu_kind,omitempty"`
 }
 
 type MachineCreateOrUpdateRequest struct {
@@ -141,15 +148,6 @@ func (a *MachineAPI) WaitForMachine(app string, id string, instanceID string) er
 
 // CreateMachine takes a MachineCreateOrUpdateRequest and creates the requested machine in the given app and then writes the response into the `res` param
 func (a *MachineAPI) CreateMachine(req MachineCreateOrUpdateRequest, app string, res *MachineResponse) error {
-	if req.Config.Guest.CpuType == "" {
-		req.Config.Guest.CpuType = "shared"
-	}
-	if req.Config.Guest.Cpus == 0 {
-		req.Config.Guest.Cpus = 1
-	}
-	if req.Config.Guest.MemoryMb == 0 {
-		req.Config.Guest.MemoryMb = 256
-	}
 	createResponse, err := a.httpClient.R().SetBody(req).SetResult(res).Post(fmt.Sprintf("http://%s/v1/apps/%s/machines", a.endpoint, app))
 
 	if err != nil {
@@ -157,23 +155,12 @@ func (a *MachineAPI) CreateMachine(req MachineCreateOrUpdateRequest, app string,
 	}
 
 	if createResponse.StatusCode != http.StatusCreated && createResponse.StatusCode != http.StatusOK {
-		return errors.New(fmt.Sprintf("Create request failed: %s, %+v", createResponse.Status, res))
+		return errors.New(fmt.Sprintf("Create request failed: %s, %+v", createResponse.Status, createResponse.String()))
 	}
 	return nil
 }
 
 func (a *MachineAPI) UpdateMachine(req MachineCreateOrUpdateRequest, app string, id string, res *MachineResponse) error {
-	if req.Config.Guest.CpuType == "" {
-		req.Config.Guest.CpuType = "shared"
-	}
-	if req.Config.Guest.Cpus == 0 {
-		//You can't have a machine with no cpus
-		req.Config.Guest.Cpus = 1
-	}
-	if req.Config.Guest.MemoryMb == 0 {
-		//You can't have a machine with no memory
-		req.Config.Guest.MemoryMb = 256
-	}
 	lease, err := a.LockMachine(app, id, 30)
 	if err != nil {
 		return err
@@ -187,7 +174,7 @@ func (a *MachineAPI) UpdateMachine(req MachineCreateOrUpdateRequest, app string,
 		return err
 	}
 	if reqRes.StatusCode != http.StatusCreated && reqRes.StatusCode != http.StatusOK {
-		return errors.New(fmt.Sprintf("Update request failed: %s, %+v", reqRes.Status, res))
+		return errors.New(fmt.Sprintf("Update request failed: %s, %+v", reqRes.Status, reqRes.String()))
 	}
 	return nil
 }

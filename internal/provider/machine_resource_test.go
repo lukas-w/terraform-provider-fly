@@ -300,7 +300,7 @@ resource "fly_machine" "testMachine" {
       }
     ]
 }
-`, providerConfig(), getTestRegion(), app)
+`, providerConfig(), app, getTestRegion())
 }
 
 func testFlyMachineResourceEmptyNameUpdateConfig() string {
@@ -333,5 +333,5 @@ resource "fly_machine" "testMachine" {
       }
     ]
 }
-`, providerConfig(), getTestRegion(), app)
+`, providerConfig(), app, getTestRegion())
 }
