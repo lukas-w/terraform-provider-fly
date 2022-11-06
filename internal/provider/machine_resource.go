@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+	"github.com/superfly/flyctl/api"
 )
 
 var _ resource.ResourceWithConfigure = &flyMachineResource{}
@@ -56,14 +57,14 @@ type flyMachineResourceData struct {
 	Services []TfService      `tfsdk:"services"`
 }
 
-func (d *flyMachineResourceData) updateFromApiData(machine apiv1.MachineResponse) {
+func (d *flyMachineResourceData) updateFromApiData(machine api.Machine) {
 	d.Name = types.String{Value: machine.Name}
 	d.Region = types.String{Value: machine.Region}
 	d.Id = types.String{Value: machine.ID}
 	d.PrivateIP = types.String{Value: machine.PrivateIP}
 	d.Image = types.String{Value: machine.Config.Image}
-	d.Cpus = types.Int64{Value: int64(machine.Config.Guest.Cpus)}
-	d.MemoryMb = types.Int64{Value: int64(machine.Config.Guest.MemoryMb)}
+	d.Cpus = types.Int64{Value: int64(machine.Config.Guest.CPUs)}
+	d.MemoryMb = types.Int64{Value: int64(machine.Config.Guest.MemoryMB)}
 	d.CpuType = types.String{Value: machine.Config.Guest.CPUKind}
 	d.Cmd = machine.Config.Init.Cmd
 	d.Entrypoint = machine.Config.Init.Entrypoint
@@ -90,11 +91,11 @@ func (d *flyMachineResourceData) updateFromApiData(machine apiv1.MachineResponse
 	}
 }
 
-func (d *flyMachineResourceData) makeMachineRequest() apiv1.MachineCreateOrUpdateRequest {
-	conf := apiv1.MachineConfig{
+func (d *flyMachineResourceData) makeMachineRequest() api.LaunchMachineInput {
+	conf := api.MachineConfig{
 		Image:    d.Image.Value,
 		Services: TfServicesToServices(d.Services),
-		Init: apiv1.InitConfig{
+		Init: api.MachineInit{
 			Cmd:        d.Cmd,
 			Exec:       d.Exec,
 			Entrypoint: d.Entrypoint,
@@ -102,13 +103,13 @@ func (d *flyMachineResourceData) makeMachineRequest() apiv1.MachineCreateOrUpdat
 	}
 
 	if !d.Cpus.Unknown {
-		conf.Guest.Cpus = int(d.Cpus.Value)
+		conf.Guest.CPUs = int(d.Cpus.Value)
 	}
 	if !d.CpuType.Unknown {
-		conf.Guest.CpuType = apiv1.CpuType(d.CpuType.Value)
+		conf.Guest.CPUKind = d.CpuType.Value
 	}
 	if !d.MemoryMb.Unknown {
-		conf.Guest.MemoryMb = int(d.MemoryMb.Value)
+		conf.Guest.MemoryMB = int(d.MemoryMb.Value)
 	}
 
 	if !d.Env.Unknown {
@@ -118,9 +119,9 @@ func (d *flyMachineResourceData) makeMachineRequest() apiv1.MachineCreateOrUpdat
 	}
 
 	if len(d.Mounts) > 0 {
-		var mounts []apiv1.MachineMount
+		var mounts []api.MachineMount
 		for _, m := range d.Mounts {
-			mounts = append(mounts, apiv1.MachineMount{
+			mounts = append(mounts, api.MachineMount{
 				Encrypted: m.Encrypted.Value,
 				Path:      m.Path.Value,
 				SizeGb:    int(m.SizeGb.Value),
@@ -130,10 +131,10 @@ func (d *flyMachineResourceData) makeMachineRequest() apiv1.MachineCreateOrUpdat
 		conf.Mounts = mounts
 	}
 
-	return apiv1.MachineCreateOrUpdateRequest{
+	return api.LaunchMachineInput{
 		Name:   d.Name.Value,
 		Region: d.Region.Value,
-		Config: conf,
+		Config: &conf,
 	}
 }
 
@@ -306,30 +307,30 @@ func (mr flyMachineResource) ValidateOpenTunnel(diags diag.Diagnostics) bool {
 	return true
 }
 
-func TfServicesToServices(input []TfService) []apiv1.Service {
-	services := make([]apiv1.Service, 0)
+func TfServicesToServices(input []TfService) []api.MachineService {
+	services := make([]api.MachineService, 0)
 	for _, s := range input {
-		var ports []apiv1.Port
+		var ports []api.MachinePort
 		for _, j := range s.Ports {
 			var handlers []string
 			for _, k := range j.Handlers {
 				handlers = append(handlers, k.Value)
 			}
-			ports = append(ports, apiv1.Port{
-				Port:     j.Port.Value,
+			ports = append(ports, api.MachinePort{
+				Port:     int(j.Port.Value),
 				Handlers: handlers,
 			})
 		}
-		services = append(services, apiv1.Service{
+		services = append(services, api.MachineService{
 			Ports:        ports,
 			Protocol:     s.Protocol.Value,
-			InternalPort: s.InternalPort.Value,
+			InternalPort: int(s.InternalPort.Value),
 		})
 	}
 	return services
 }
 
-func ServicesToTfServices(input []apiv1.Service) []TfService {
+func ServicesToTfServices(input []api.MachineService) []TfService {
 	tfservices := make([]TfService, 0)
 	for _, s := range input {
 		var tfports []TfPort
@@ -365,7 +366,7 @@ func (mr flyMachineResource) Create(ctx context.Context, req resource.CreateRequ
 	}
 
 	machineAPI := apiv1.NewMachineAPI(&mr.httpClient, mr.httpEndpoint)
-	var machine apiv1.MachineResponse
+	var machine api.Machine
 	err := machineAPI.CreateMachine(data.makeMachineRequest(), data.App.Value, &machine)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to create machine", err.Error())
@@ -395,7 +396,7 @@ func (mr flyMachineResource) Read(ctx context.Context, req resource.ReadRequest,
 
 	machineAPI := apiv1.NewMachineAPI(&mr.httpClient, mr.httpEndpoint)
 
-	var machine apiv1.MachineResponse
+	var machine api.Machine
 	_, err := machineAPI.ReadMachine(data.App.Value, data.Id.Value, &machine)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to get machine", err.Error())
@@ -419,7 +420,7 @@ func (mr flyMachineResource) Update(ctx context.Context, req resource.UpdateRequ
 	}
 
 	machineAPI := apiv1.NewMachineAPI(&mr.httpClient, mr.httpEndpoint)
-	var machine apiv1.MachineResponse
+	var machine api.Machine
 	err := machineAPI.UpdateMachine(plan.makeMachineRequest(), state.App.Value, state.Id.Value, &machine)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to update machine", err.Error())
