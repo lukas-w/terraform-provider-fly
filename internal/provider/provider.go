@@ -176,6 +176,7 @@ func (p *provider) Resources(ctx context.Context) []func() resource.Resource {
 		newRedisResource,
 		NewPgDbResource,
 		NewPgUserResource,
+		newPgAttachmentResource,
 	}
 }
 
