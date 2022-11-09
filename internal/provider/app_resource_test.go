@@ -127,6 +127,46 @@ resource "fly_app" "%s" {
 					}),
 				),
 			},
+
+			// Verify that we don't touch unmanaged secrets
+			{
+				PreConfig: func() {
+					_, err := client.SetSecrets(context.Background(), name, map[string]string{
+						"UNMANAGED": "1",
+					})
+					if err != nil {
+						t.Fatal(err)
+					}
+				},
+				Config: fmt.Sprintf(`
+%s
+resource "fly_app" "%s" {
+	name = "%s"
+	org = "%s"
+	secrets = {
+		TEST = {value = "3"}
+	}
+}
+`, providerConfig(), appName, name, getTestOrg()),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet(resourceName, "secrets.TEST.digest"),
+					resource.TestCheckNoResourceAttr(resourceName, "secrets.UNMANAGED.digest"),
+					func(state *terraform.State) error {
+						r, err := client.GetAppSecrets(context.Background(), name)
+						if err != nil {
+							return err
+						}
+
+						if len(r) == 1 && r[0].Name == "TEST" {
+							return errors.New("unmanaged secret disappeared")
+						} else if len(r) != 2 {
+							return errors.New(fmt.Sprintf("unexpected secrets in API %v", r))
+						}
+						return nil
+					},
+				),
+			},
+
 			{
 				Config: fmt.Sprintf(`
 %s
