@@ -16,3 +16,12 @@ func KVToTfMap(kv map[string]string, elemType attr.Type) types.Map {
 	}
 	return TFMap
 }
+
+func StringSliceToTfList(slice []string) (list types.List) {
+	list.ElemType = types.StringType
+	list.Elems = make([]attr.Value, len(slice))
+	for i, v := range slice {
+		list.Elems[i] = types.String{Value: v}
+	}
+	return
+}

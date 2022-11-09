@@ -17,7 +17,26 @@ func TestAccFlyMachineBase(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testFlyMachineResourceConfig(rName),
-				Check:  resource.TestCheckResourceAttr("fly_machine.testMachine", "name", rName),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("fly_machine.testMachine", "name", rName),
+					resource.TestCheckResourceAttr("fly_machine.testMachine", "app", os.Getenv("FLY_TF_TEST_APP")),
+					resource.TestCheckResourceAttr("fly_machine.testMachine", "region", getTestRegion()),
+					resource.TestCheckResourceAttr("fly_machine.testMachine", "image", "nginx"),
+					resource.ComposeTestCheckFunc(
+						resource.TestCheckResourceAttrSet("fly_machine.testMachine", "guest.cpus"),
+						resource.TestCheckResourceAttrSet("fly_machine.testMachine", "guest.cpu_kind"),
+						resource.TestCheckResourceAttrSet("fly_machine.testMachine", "guest.memory_mb"),
+					),
+					resource.ComposeAggregateTestCheckFunc(
+						resource.TestCheckResourceAttr("fly_machine.testMachine", "services.0.protocol", "tcp"),
+						resource.TestCheckResourceAttr("fly_machine.testMachine", "services.0.internal_port", "80"),
+					),
+					resource.TestCheckResourceAttrSet("fly_machine.testMachine", "private_ip"),
+					resource.TestCheckNoResourceAttr("fly_machine.testMachine", "restart"),
+					resource.TestCheckNoResourceAttr("fly_machine.testMachine", "processes"),
+					resource.TestCheckNoResourceAttr("fly_machine.testMachine", "metrics"),
+					resource.TestCheckNoResourceAttr("fly_machine.testMachine", "checks"),
+				),
 			},
 			{
 				Config: testFlyMachineResourceUpdateConfig(rName),
