@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/Khan/genqlient/graphql"
 	hreq "github.com/imroc/req/v3"
+	"github.com/samber/lo"
 	"github.com/superfly/flyctl/api"
 	"net/http"
 	"time"
@@ -24,6 +25,14 @@ const (
 	CpuTypeShared    CpuType = "shared"
 	CpuTypeDedicated CpuType = "dedicated"
 )
+
+type Machines []*api.Machine
+
+func (m Machines) WithoutInactive() Machines {
+	return lo.Filter(m, func(m *api.Machine, _ int) bool {
+		return m.Config != nil && m.Config.Metadata["process_group"] != "release_command" && m.State != "destroyed"
+	})
+}
 
 func NewMachineAPI(httpClient *hreq.Client, endpoint string) *MachineAPI {
 	return &MachineAPI{
@@ -123,4 +132,9 @@ func (a *MachineAPI) DeleteMachine(app string, id string, maxRetries int) error 
 		return errors.New("max retries exceeded")
 	}
 	return nil
+}
+
+func (a *MachineAPI) ListMachines(app string, res *Machines) (*hreq.Response, error) {
+	*res = make(Machines, 0)
+	return a.httpClient.R().SetResult(res).Get(fmt.Sprintf("http://%s/v1/apps/%s/machines", a.endpoint, app))
 }
