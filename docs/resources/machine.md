@@ -65,21 +65,63 @@ resource "fly_machine" "exampleMachine" {
 ### Optional
 
 - `app` (String) fly app
+- `checks` (Attributes Map) (see [below for nested schema](#nestedatt--checks))
 - `cmd` (List of String) cmd
-- `cpus` (Number) cpu count
-- `cputype` (String) cpu type
 - `entrypoint` (List of String) image entrypoint
 - `env` (Map of String) Optional environment variables, keys and values must be strings
 - `exec` (List of String) exec command
-- `memorymb` (Number) memory mb
+- `guest` (Attributes) (see [below for nested schema](#nestedatt--guest))
+- `metadata` (Map of String)
+- `metrics` (Attributes) (see [below for nested schema](#nestedatt--metrics))
 - `mounts` (Attributes List) Volume mounts (see [below for nested schema](#nestedatt--mounts))
 - `name` (String) machine name
+- `processes` (Attributes List) (see [below for nested schema](#nestedatt--processes))
+- `restart` (Attributes) (see [below for nested schema](#nestedatt--restart))
 - `services` (Attributes List) services (see [below for nested schema](#nestedatt--services))
 
 ### Read-Only
 
 - `id` (String) machine id
-- `privateip` (String) Private IP
+- `private_ip` (String) Private IP
+
+<a id="nestedatt--checks"></a>
+### Nested Schema for `checks`
+
+Required:
+
+- `type` (String)
+
+Optional:
+
+- `http_method` (String)
+- `http_path` (String)
+- `interval` (String)
+- `port` (Number)
+- `timeout` (String)
+
+
+<a id="nestedatt--guest"></a>
+### Nested Schema for `guest`
+
+Required:
+
+- `cpu_kind` (String) cpu type
+- `cpus` (Number) cpu count
+- `memory_mb` (Number) memory mb
+
+Optional:
+
+- `kernel_args` (List of String)
+
+
+<a id="nestedatt--metrics"></a>
+### Nested Schema for `metrics`
+
+Required:
+
+- `path` (String)
+- `port` (Number)
+
 
 <a id="nestedatt--mounts"></a>
 ### Nested Schema for `mounts`
@@ -95,6 +137,30 @@ Optional:
 - `size_gb` (Number)
 
 
+<a id="nestedatt--processes"></a>
+### Nested Schema for `processes`
+
+Optional:
+
+- `cmd` (List of String)
+- `entrypoint` (List of String)
+- `env` (Map of String)
+- `exec` (List of String)
+- `user` (String)
+
+
+<a id="nestedatt--restart"></a>
+### Nested Schema for `restart`
+
+Required:
+
+- `policy` (String) Restart policy, one of `"no"`, `"on-failure"` and `"always"`
+
+Optional:
+
+- `max_retries` (Number) Only relevant with the `"on-failure"` policy
+
+
 <a id="nestedatt--services"></a>
 ### Nested Schema for `services`
 
@@ -103,6 +169,10 @@ Required:
 - `internal_port` (Number) Port application listens on internally
 - `ports` (Attributes List) External ports and handlers (see [below for nested schema](#nestedatt--services--ports))
 - `protocol` (String) network protocol
+
+Optional:
+
+- `concurrency` (Attributes) (see [below for nested schema](#nestedatt--services--concurrency))
 
 <a id="nestedatt--services--ports"></a>
 ### Nested Schema for `services.ports`
@@ -113,6 +183,17 @@ Required:
 
 Optional:
 
+- `force_https` (Boolean)
 - `handlers` (List of String) How the edge should process requests
+
+
+<a id="nestedatt--services--concurrency"></a>
+### Nested Schema for `services.concurrency`
+
+Required:
+
+- `hard_limit` (Number)
+- `soft_limit` (Number)
+- `type` (String) Specifies what metric to use to measure load for the application. Either "connections" or "requests"
 
 

@@ -33,7 +33,10 @@ resource "fly_volume" "exampleApp" {
 
 ### Optional
 
+- `encrypted` (Boolean) Encrypt the volume contents. Defaults to `true`
+
+### Read-Only
+
 - `id` (String) ID of volume
-- `internalid` (String) Internal ID
 
 

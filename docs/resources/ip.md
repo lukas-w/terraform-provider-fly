@@ -30,7 +30,7 @@ resource "fly_ip" "exampleIpv6" {
 ### Required
 
 - `app` (String) Name of app to attach
-- `type` (String) v4 or v6
+- `type` (String) v4, v6 or private_v6
 
 ### Read-Only
 

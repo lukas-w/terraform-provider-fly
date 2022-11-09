@@ -27,12 +27,26 @@ resource "fly_app" "exampleApp" {
 
 ### Optional
 
+- `machines` (Boolean) Use the machines platform
 - `org` (String) Optional org slug to operate upon
+- `secrets` (Attributes Map) (see [below for nested schema](#nestedatt--secrets))
 
 ### Read-Only
 
 - `appurl` (String) readonly appUrl
 - `id` (String) readonly app id
 - `orgid` (String) readonly orgid
+
+<a id="nestedatt--secrets"></a>
+### Nested Schema for `secrets`
+
+Required:
+
+- `value` (String, Sensitive)
+
+Read-Only:
+
+- `created_at` (String)
+- `digest` (String)
 
 
