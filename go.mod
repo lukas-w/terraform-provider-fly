@@ -6,11 +6,13 @@ require (
 	github.com/Khan/genqlient v0.5.0
 	github.com/google/uuid v1.2.0
 	github.com/hashicorp/terraform-plugin-framework v0.14.0
+	github.com/hashicorp/terraform-plugin-framework-validators v0.5.0
 	github.com/hashicorp/terraform-plugin-go v0.14.0
 	github.com/hashicorp/terraform-plugin-log v0.7.0
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.22.0
 	github.com/imroc/req/v3 v3.22.0
 	github.com/miekg/dns v1.1.50
+	github.com/samber/lo v1.27.0
 	github.com/superfly/flyctl v0.0.0-20221101100621-dd396512f1d8
 	github.com/superfly/flyctl/api v0.0.0-20221101100621-dd396512f1d8
 	github.com/vektah/gqlparser/v2 v2.5.1
@@ -27,10 +29,7 @@ require (
 	github.com/Microsoft/hcsshim v0.8.18 // indirect
 	github.com/PuerkitoBio/rehttp v1.1.0 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
-	github.com/agnivade/levenshtein v1.1.1 // indirect
 	github.com/alecthomas/chroma v0.10.0 // indirect
-	github.com/alexflint/go-arg v1.4.2 // indirect
-	github.com/alexflint/go-scalar v1.0.0 // indirect
 	github.com/apex/log v1.9.0 // indirect
 	github.com/apparentlymart/go-cidr v1.1.0 // indirect
 	github.com/apparentlymart/go-textseg/v13 v13.0.0 // indirect
@@ -41,7 +40,6 @@ require (
 	github.com/buildpacks/imgutil v0.0.0-20210510154637-009f91f52918 // indirect
 	github.com/buildpacks/lifecycle v0.11.4 // indirect
 	github.com/buildpacks/pack v0.21.0 // indirect
-	github.com/cenkalti/backoff v2.1.1+incompatible // indirect
 	github.com/chzyer/readline v1.5.1 // indirect
 	github.com/cli/safeexec v1.0.0 // indirect
 	github.com/containerd/cgroups v1.0.1 // indirect
@@ -58,7 +56,6 @@ require (
 	github.com/docker/docker-credential-helpers v0.6.3 // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.4.0 // indirect
-	github.com/docker/libnetwork v0.8.0-dev.2.0.20200917202933-d0951081b35f // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/ejcx/sshcert v1.0.1 // indirect
 	github.com/emirpasic/gods v1.12.0 // indirect
@@ -81,7 +78,6 @@ require (
 	github.com/google/btree v1.0.1 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/google/go-containerregistry v0.6.0 // indirect
-	github.com/google/go-querystring v1.0.0 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0 // indirect
@@ -100,14 +96,11 @@ require (
 	github.com/hashicorp/logutils v1.0.0 // indirect
 	github.com/hashicorp/terraform-exec v0.17.3 // indirect
 	github.com/hashicorp/terraform-json v0.14.0 // indirect
-	github.com/hashicorp/terraform-plugin-framework-validators v0.5.0 // indirect
 	github.com/hashicorp/terraform-registry-address v0.0.0-20220623143253-7d51757b572c // indirect
 	github.com/hashicorp/terraform-svchost v0.0.0-20200729002733-f050f53b9734 // indirect
 	github.com/hashicorp/yamux v0.1.1 // indirect
 	github.com/heroku/color v0.0.6 // indirect
-	github.com/heroku/heroku-go/v5 v5.4.0 // indirect
 	github.com/imdario/mergo v0.3.13 // indirect
-	github.com/inancgumus/screen v0.0.0-20190314163918-06e984b86ed3 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/jpillora/backoff v1.0.0 // indirect
@@ -115,7 +108,6 @@ require (
 	github.com/kevinburke/ssh_config v0.0.0-20201106050909-4977a11b4351 // indirect
 	github.com/klauspost/compress v1.13.4 // indirect
 	github.com/kr/fs v0.1.0 // indirect
-	github.com/kr/pretty v0.3.0 // indirect
 	github.com/leodido/go-urn v1.2.1 // indirect
 	github.com/logrusorgru/aurora v2.0.3+incompatible // indirect
 	github.com/lucas-clemente/quic-go v0.29.0 // indirect
@@ -130,6 +122,7 @@ require (
 	github.com/mattn/go-isatty v0.0.16 // indirect
 	github.com/mattn/go-runewidth v0.0.10 // indirect
 	github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d // indirect
+	github.com/minio/highwayhash v1.0.2 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/go-testing-interface v1.14.1 // indirect
@@ -143,6 +136,7 @@ require (
 	github.com/moby/term v0.0.0-20201216013528-df9cb8a40635 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/muesli/termenv v0.7.4 // indirect
+	github.com/nats-io/jwt/v2 v2.3.0 // indirect
 	github.com/nats-io/nats.go v1.12.1 // indirect
 	github.com/nats-io/nkeys v0.3.0 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
@@ -156,16 +150,12 @@ require (
 	github.com/opencontainers/image-spec v1.0.1 // indirect
 	github.com/opencontainers/runc v1.0.0-rc93 // indirect
 	github.com/opencontainers/selinux v1.8.0 // indirect
-	github.com/pborman/uuid v1.2.0 // indirect
 	github.com/pelletier/go-toml v1.9.4 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pkg/sftp v1.13.5 // indirect
-	github.com/r3labs/diff v1.1.0 // indirect
 	github.com/rivo/tview v0.0.0-20210624165335-29d673af0ce2 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/sabhiram/go-gitignore v0.0.0-20201211074657-223ce5d391b0 // indirect
-	github.com/samber/lo v1.27.0 // indirect
-	github.com/segmentio/textio v1.2.0 // indirect
 	github.com/sergi/go-diff v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966 // indirect
