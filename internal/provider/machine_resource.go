@@ -153,10 +153,10 @@ func (d *flyMachineResourceData) updateFromApiCreateData(m api.Machine) (diags d
 		var mounts []TfMachineMount
 		for _, m := range m.Config.Mounts {
 			mounts = append(mounts, TfMachineMount{
-				Encrypted: types.Bool{Value: m.Encrypted},
-				Path:      types.String{Value: m.Path},
-				SizeGb:    types.Int64{Value: int64(m.SizeGb)},
-				Volume:    types.String{Value: m.Volume},
+				//Encrypted: types.Bool{Value: m.Encrypted},
+				Path: types.String{Value: m.Path},
+				//SizeGb:    types.Int64{Value: int64(m.SizeGb)},
+				Volume: types.String{Value: m.Volume},
 			})
 		}
 		d.Mounts = mounts
@@ -263,10 +263,10 @@ func (d *flyMachineResourceData) makeMachineRequest(ctx context.Context, diags *
 		var mounts []api.MachineMount
 		for _, m := range d.Mounts {
 			mounts = append(mounts, api.MachineMount{
-				Encrypted: m.Encrypted.Value,
-				Path:      m.Path.Value,
-				SizeGb:    int(m.SizeGb.Value),
-				Volume:    m.Volume.Value,
+				//Encrypted: m.Encrypted.Value,
+				Path: m.Path.Value,
+				//SizeGb:    int(m.SizeGb.Value),
+				Volume: m.Volume.Value,
 			})
 		}
 		conf.Mounts = mounts
@@ -330,10 +330,10 @@ func (d *flyMachineResourceData) makeMachineRequest(ctx context.Context, diags *
 }
 
 type TfMachineMount struct {
-	Encrypted types.Bool   `tfsdk:"encrypted"`
-	Path      types.String `tfsdk:"path"`
-	SizeGb    types.Int64  `tfsdk:"size_gb"`
-	Volume    types.String `tfsdk:"volume"`
+	//Encrypted types.Bool   `tfsdk:"encrypted"`
+	Path types.String `tfsdk:"path"`
+	//SizeGb    types.Int64  `tfsdk:"size_gb"`
+	Volume types.String `tfsdk:"volume"`
 }
 
 func (mr flyMachineResource) Metadata(_ context.Context, _ resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -441,23 +441,23 @@ func (flyMachineResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnos
 				MarkdownDescription: "Volume mounts",
 				Optional:            true,
 				Attributes: tfsdk.ListNestedAttributes(map[string]tfsdk.Attribute{
-					"encrypted": {
-						Optional:      true,
-						Computed:      true,
-						Type:          types.BoolType,
-						PlanModifiers: []tfsdk.AttributePlanModifier{resource.UseStateForUnknown()},
-					},
+					//"encrypted": {
+					//	Optional:      true,
+					//	Computed:      true,
+					//	Type:          types.BoolType,
+					//	PlanModifiers: []tfsdk.AttributePlanModifier{resource.UseStateForUnknown()},
+					//},
 					"path": {
 						Required:            true,
 						MarkdownDescription: "Path for volume to be mounted on vm",
 						Type:                types.StringType,
 					},
-					"size_gb": {
-						Optional:      true,
-						Computed:      true,
-						Type:          types.Int64Type,
-						PlanModifiers: []tfsdk.AttributePlanModifier{resource.UseStateForUnknown()},
-					},
+					//"size_gb": {
+					//	Optional:      true,
+					//	Computed:      true,
+					//	Type:          types.Int64Type,
+					//	PlanModifiers: []tfsdk.AttributePlanModifier{resource.UseStateForUnknown()},
+					//},
 					"volume": {
 						Required:            true,
 						MarkdownDescription: "Name or ID of volume",
@@ -551,8 +551,7 @@ func (flyMachineResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnos
 				Optional: true,
 				Attributes: tfsdk.SingleNestedAttributes(map[string]tfsdk.Attribute{
 					"policy": {
-						Required: true,
-
+						Required:            true,
 						Type:                types.StringType,
 						Description:         "Restart policy, one of \"no\", \"on-failure\" and \"always\"",
 						MarkdownDescription: "Restart policy, one of `\"no\"`, `\"on-failure\"` and `\"always\"`",
