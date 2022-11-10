@@ -192,6 +192,7 @@ type AppFragment struct {
 	Secrets         []AppFragmentSecretsSecret `json:"secrets"`
 	AppUrl          string                     `json:"appUrl"`
 	PlatformVersion PlatformVersionEnum        `json:"platformVersion"`
+	Role            AppFragmentRoleAppRole     `json:"-"`
 }
 
 // GetId returns AppFragment.Id, and is useful for accessing the field via an interface.
@@ -212,6 +213,90 @@ func (v *AppFragment) GetAppUrl() string { return v.AppUrl }
 // GetPlatformVersion returns AppFragment.PlatformVersion, and is useful for accessing the field via an interface.
 func (v *AppFragment) GetPlatformVersion() PlatformVersionEnum { return v.PlatformVersion }
 
+// GetRole returns AppFragment.Role, and is useful for accessing the field via an interface.
+func (v *AppFragment) GetRole() AppFragmentRoleAppRole { return v.Role }
+
+func (v *AppFragment) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*AppFragment
+		Role json.RawMessage `json:"role"`
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.AppFragment = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	{
+		dst := &v.Role
+		src := firstPass.Role
+		if len(src) != 0 && string(src) != "null" {
+			err = __unmarshalAppFragmentRoleAppRole(
+				src, dst)
+			if err != nil {
+				return fmt.Errorf(
+					"Unable to unmarshal AppFragment.Role: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+type __premarshalAppFragment struct {
+	Id string `json:"id"`
+
+	Name string `json:"name"`
+
+	Organization AppFragmentOrganization `json:"organization"`
+
+	Secrets []AppFragmentSecretsSecret `json:"secrets"`
+
+	AppUrl string `json:"appUrl"`
+
+	PlatformVersion PlatformVersionEnum `json:"platformVersion"`
+
+	Role json.RawMessage `json:"role"`
+}
+
+func (v *AppFragment) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *AppFragment) __premarshalJSON() (*__premarshalAppFragment, error) {
+	var retval __premarshalAppFragment
+
+	retval.Id = v.Id
+	retval.Name = v.Name
+	retval.Organization = v.Organization
+	retval.Secrets = v.Secrets
+	retval.AppUrl = v.AppUrl
+	retval.PlatformVersion = v.PlatformVersion
+	{
+
+		dst := &retval.Role
+		src := v.Role
+		var err error
+		*dst, err = __marshalAppFragmentRoleAppRole(
+			&src)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"Unable to marshal AppFragment.Role: %w", err)
+		}
+	}
+	return &retval, nil
+}
+
 // AppFragmentOrganization includes the requested fields of the GraphQL type Organization.
 type AppFragmentOrganization struct {
 	Id   string `json:"id"`
@@ -223,6 +308,155 @@ func (v *AppFragmentOrganization) GetId() string { return v.Id }
 
 // GetSlug returns AppFragmentOrganization.Slug, and is useful for accessing the field via an interface.
 func (v *AppFragmentOrganization) GetSlug() string { return v.Slug }
+
+// AppFragmentRoleAppRole includes the requested fields of the GraphQL interface AppRole.
+//
+// AppFragmentRoleAppRole is implemented by the following types:
+// AppFragmentRoleEmptyAppRole
+// AppFragmentRoleFlyctlMachineHostAppRole
+// AppFragmentRolePostgresClusterAppRole
+// AppFragmentRoleRemoteDockerBuilderAppRole
+type AppFragmentRoleAppRole interface {
+	implementsGraphQLInterfaceAppFragmentRoleAppRole()
+	// GetTypename returns the receiver's concrete GraphQL type-name (see interface doc for possible values).
+	GetTypename() string
+	// GetName returns the interface-field "name" from its implementation.
+	GetName() string
+}
+
+func (v *AppFragmentRoleEmptyAppRole) implementsGraphQLInterfaceAppFragmentRoleAppRole() {}
+func (v *AppFragmentRoleFlyctlMachineHostAppRole) implementsGraphQLInterfaceAppFragmentRoleAppRole() {
+}
+func (v *AppFragmentRolePostgresClusterAppRole) implementsGraphQLInterfaceAppFragmentRoleAppRole() {}
+func (v *AppFragmentRoleRemoteDockerBuilderAppRole) implementsGraphQLInterfaceAppFragmentRoleAppRole() {
+}
+
+func __unmarshalAppFragmentRoleAppRole(b []byte, v *AppFragmentRoleAppRole) error {
+	if string(b) == "null" {
+		return nil
+	}
+
+	var tn struct {
+		TypeName string `json:"__typename"`
+	}
+	err := json.Unmarshal(b, &tn)
+	if err != nil {
+		return err
+	}
+
+	switch tn.TypeName {
+	case "EmptyAppRole":
+		*v = new(AppFragmentRoleEmptyAppRole)
+		return json.Unmarshal(b, *v)
+	case "FlyctlMachineHostAppRole":
+		*v = new(AppFragmentRoleFlyctlMachineHostAppRole)
+		return json.Unmarshal(b, *v)
+	case "PostgresClusterAppRole":
+		*v = new(AppFragmentRolePostgresClusterAppRole)
+		return json.Unmarshal(b, *v)
+	case "RemoteDockerBuilderAppRole":
+		*v = new(AppFragmentRoleRemoteDockerBuilderAppRole)
+		return json.Unmarshal(b, *v)
+	case "":
+		return fmt.Errorf(
+			"response was missing AppRole.__typename")
+	default:
+		return fmt.Errorf(
+			`unexpected concrete type for AppFragmentRoleAppRole: "%v"`, tn.TypeName)
+	}
+}
+
+func __marshalAppFragmentRoleAppRole(v *AppFragmentRoleAppRole) ([]byte, error) {
+
+	var typename string
+	switch v := (*v).(type) {
+	case *AppFragmentRoleEmptyAppRole:
+		typename = "EmptyAppRole"
+
+		result := struct {
+			TypeName string `json:"__typename"`
+			*AppFragmentRoleEmptyAppRole
+		}{typename, v}
+		return json.Marshal(result)
+	case *AppFragmentRoleFlyctlMachineHostAppRole:
+		typename = "FlyctlMachineHostAppRole"
+
+		result := struct {
+			TypeName string `json:"__typename"`
+			*AppFragmentRoleFlyctlMachineHostAppRole
+		}{typename, v}
+		return json.Marshal(result)
+	case *AppFragmentRolePostgresClusterAppRole:
+		typename = "PostgresClusterAppRole"
+
+		result := struct {
+			TypeName string `json:"__typename"`
+			*AppFragmentRolePostgresClusterAppRole
+		}{typename, v}
+		return json.Marshal(result)
+	case *AppFragmentRoleRemoteDockerBuilderAppRole:
+		typename = "RemoteDockerBuilderAppRole"
+
+		result := struct {
+			TypeName string `json:"__typename"`
+			*AppFragmentRoleRemoteDockerBuilderAppRole
+		}{typename, v}
+		return json.Marshal(result)
+	case nil:
+		return []byte("null"), nil
+	default:
+		return nil, fmt.Errorf(
+			`unexpected concrete type for AppFragmentRoleAppRole: "%T"`, v)
+	}
+}
+
+// AppFragmentRoleEmptyAppRole includes the requested fields of the GraphQL type EmptyAppRole.
+type AppFragmentRoleEmptyAppRole struct {
+	Typename string `json:"__typename"`
+	Name     string `json:"name"`
+}
+
+// GetTypename returns AppFragmentRoleEmptyAppRole.Typename, and is useful for accessing the field via an interface.
+func (v *AppFragmentRoleEmptyAppRole) GetTypename() string { return v.Typename }
+
+// GetName returns AppFragmentRoleEmptyAppRole.Name, and is useful for accessing the field via an interface.
+func (v *AppFragmentRoleEmptyAppRole) GetName() string { return v.Name }
+
+// AppFragmentRoleFlyctlMachineHostAppRole includes the requested fields of the GraphQL type FlyctlMachineHostAppRole.
+type AppFragmentRoleFlyctlMachineHostAppRole struct {
+	Typename string `json:"__typename"`
+	Name     string `json:"name"`
+}
+
+// GetTypename returns AppFragmentRoleFlyctlMachineHostAppRole.Typename, and is useful for accessing the field via an interface.
+func (v *AppFragmentRoleFlyctlMachineHostAppRole) GetTypename() string { return v.Typename }
+
+// GetName returns AppFragmentRoleFlyctlMachineHostAppRole.Name, and is useful for accessing the field via an interface.
+func (v *AppFragmentRoleFlyctlMachineHostAppRole) GetName() string { return v.Name }
+
+// AppFragmentRolePostgresClusterAppRole includes the requested fields of the GraphQL type PostgresClusterAppRole.
+type AppFragmentRolePostgresClusterAppRole struct {
+	Typename string `json:"__typename"`
+	Name     string `json:"name"`
+}
+
+// GetTypename returns AppFragmentRolePostgresClusterAppRole.Typename, and is useful for accessing the field via an interface.
+func (v *AppFragmentRolePostgresClusterAppRole) GetTypename() string { return v.Typename }
+
+// GetName returns AppFragmentRolePostgresClusterAppRole.Name, and is useful for accessing the field via an interface.
+func (v *AppFragmentRolePostgresClusterAppRole) GetName() string { return v.Name }
+
+// AppFragmentRoleRemoteDockerBuilderAppRole includes the requested fields of the GraphQL type RemoteDockerBuilderAppRole.
+type AppFragmentRoleRemoteDockerBuilderAppRole struct {
+	Typename string `json:"__typename"`
+	Name     string `json:"name"`
+}
+
+// GetTypename returns AppFragmentRoleRemoteDockerBuilderAppRole.Typename, and is useful for accessing the field via an interface.
+func (v *AppFragmentRoleRemoteDockerBuilderAppRole) GetTypename() string { return v.Typename }
+
+// GetName returns AppFragmentRoleRemoteDockerBuilderAppRole.Name, and is useful for accessing the field via an interface.
+func (v *AppFragmentRoleRemoteDockerBuilderAppRole) GetName() string { return v.Name }
 
 // AppFragmentSecretsSecret includes the requested fields of the GraphQL type Secret.
 type AppFragmentSecretsSecret struct {
@@ -1885,6 +2119,10 @@ fragment AppFragment on App {
 	}
 	appUrl
 	platformVersion
+	role {
+		__typename
+		name
+	}
 }
 `,
 		Variables: &__CreateAppMutationInput{
@@ -2133,6 +2371,10 @@ fragment AppFragment on App {
 	}
 	appUrl
 	platformVersion
+	role {
+		__typename
+		name
+	}
 }
 `,
 		Variables: &__GetAppInput{

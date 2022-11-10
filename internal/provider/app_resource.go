@@ -50,6 +50,7 @@ type flyAppResourceData struct {
 	Id       types.String `tfsdk:"id"`
 	Machines types.Bool   `tfsdk:"machines"`
 	Secrets  secretMap    `tfsdk:"secrets"`
+	RoleId   types.String `tfsdk:"role_id"`
 }
 
 func (d *flyAppResourceData) setSecret(name string, secret appSecret) {
@@ -75,6 +76,11 @@ func (d *flyAppResourceData) updateFromApi(a graphql.AppFragment) {
 	d.Id = types.String{Value: a.Id}
 	if a.PlatformVersion != "" {
 		d.Machines = types.Bool{Value: a.PlatformVersion == graphql.PlatformVersionEnumMachines}
+	}
+	if a.Role != nil && a.Role.GetName() != "" {
+		d.RoleId = types.String{Value: a.Role.GetName()}
+	} else {
+		d.RoleId = types.String{Null: true}
 	}
 }
 
@@ -187,6 +193,11 @@ func (r flyAppResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnosti
 				Type:                types.StringType,
 				PlanModifiers:       []tfsdk.AttributePlanModifier{resource.UseStateForUnknown()},
 			},
+			"role_id": {
+				Type:          types.StringType,
+				Optional:      true,
+				PlanModifiers: []tfsdk.AttributePlanModifier{modifiers.Default(types.String{Null: true})},
+			},
 		},
 	}, nil
 }
@@ -221,6 +232,7 @@ func (r flyAppResource) Create(ctx context.Context, req resource.CreateRequest, 
 		OrganizationId: data.OrgId.Value,
 		Machines:       data.Machines.Value,
 		Runtime:        graphql.RuntimeTypeFirecracker,
+		AppRoleId:      data.RoleId.Value,
 	}
 	mresp, err := graphql.CreateAppMutation(context.Background(), r.gqlClient, createAppInput)
 	if err != nil {

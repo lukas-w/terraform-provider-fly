@@ -62,6 +62,9 @@ fragment AppFragment on App {
     }
     appUrl
     platformVersion
+    role {
+        name
+    }
 }
 
 query GetApp($name: String) {
