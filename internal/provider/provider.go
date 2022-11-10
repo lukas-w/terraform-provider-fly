@@ -177,6 +177,7 @@ func (p *provider) Resources(ctx context.Context) []func() resource.Resource {
 		NewPgDbResource,
 		NewPgUserResource,
 		newPgAttachmentResource,
+		newPostgresConsulResource,
 	}
 }
 
