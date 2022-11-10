@@ -112,6 +112,7 @@ func (vr flyVolumeResource) Create(ctx context.Context, req resource.CreateReque
 	})
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to create volume", err.Error())
+		return
 	}
 
 	data.fromApiVolume(*v)
