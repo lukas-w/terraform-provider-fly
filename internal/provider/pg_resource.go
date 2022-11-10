@@ -14,10 +14,10 @@ type pgResource struct {
 }
 
 func (r pgResource) getPgClient(ctx context.Context, app string, diags *diag.Diagnostics) *hreq.Client {
-	machineAPI := apiv1.NewMachineAPI(&r.httpClient, r.httpEndpoint)
+	machineAPI := r.machineApi(app)
 
 	var machines apiv1.Machines
-	_, err := machineAPI.ListMachines(app, &machines)
+	_, err := machineAPI.ListMachines(&machines)
 	if err != nil {
 		diags.AddError("Error in ListMachines", err.Error())
 		return nil

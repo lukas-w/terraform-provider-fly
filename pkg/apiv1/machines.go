@@ -16,7 +16,6 @@ var NonceHeader = "fly-machine-lease-nonce"
 type MachineAPI struct {
 	client     *graphql.Client
 	httpClient *hreq.Client
-	endpoint   string
 }
 
 type CpuType string
@@ -34,38 +33,37 @@ func (m Machines) WithoutInactive() Machines {
 	})
 }
 
-func NewMachineAPI(httpClient *hreq.Client, endpoint string) *MachineAPI {
+func NewMachineAPI(httpClient *hreq.Client, endpoint string, app string) *MachineAPI {
 	return &MachineAPI{
-		httpClient: httpClient,
-		endpoint:   endpoint,
+		httpClient: httpClient.Clone().SetBaseURL(fmt.Sprintf("http://%s/v1/apps/%s/machines", endpoint, app)),
 	}
 }
 
-func (a *MachineAPI) LockMachine(app string, id string, timeout int) (*api.MachineLease, error) {
+func (a *MachineAPI) LockMachine(id string, timeout int) (*api.MachineLease, error) {
 	var res api.MachineLease
-	_, err := a.httpClient.R().SetResult(&res).Post(fmt.Sprintf("http://%s/v1/apps/%s/machines/%s/lease/?ttl=%d", a.endpoint, app, id, timeout))
+	_, err := a.httpClient.R().SetResult(&res).Post(fmt.Sprintf("/%s/lease/?ttl=%d", id, timeout))
 	if err != nil {
 		return nil, err
 	}
 	return &res, nil
 }
 
-func (a *MachineAPI) ReleaseMachine(lease api.MachineLease, app string, id string) error {
-	_, err := a.httpClient.R().SetHeader(NonceHeader, lease.Data.Nonce).Delete(fmt.Sprintf("http://%s/v1/apps/%s/machines/%s/lease", a.endpoint, app, id))
+func (a *MachineAPI) ReleaseMachine(lease api.MachineLease, id string) error {
+	_, err := a.httpClient.R().SetHeader(NonceHeader, lease.Data.Nonce).Delete(fmt.Sprintf("/%s/lease", id))
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (a *MachineAPI) WaitForMachine(app string, id string, instanceID string) error {
-	_, err := a.httpClient.R().Get(fmt.Sprintf("http://%s/v1/apps/%s/machines/%s/wait?instance_id=%s", a.endpoint, app, id, instanceID))
+func (a *MachineAPI) WaitForMachine(id string, instanceID string) error {
+	_, err := a.httpClient.R().Get(fmt.Sprintf("/%s/wait?instance_id=%s", id, instanceID))
 	return err
 }
 
 // CreateMachine takes a MachineCreateOrUpdateRequest and creates the requested machine in the given app and then writes the response into the `res` param
-func (a *MachineAPI) CreateMachine(input api.LaunchMachineInput, app string, res *api.Machine) error {
-	createResponse, err := a.httpClient.R().SetBody(input).SetResult(res).Post(fmt.Sprintf("http://%s/v1/apps/%s/machines", a.endpoint, app))
+func (a *MachineAPI) CreateMachine(input api.LaunchMachineInput, res *api.Machine) error {
+	createResponse, err := a.httpClient.R().SetBody(input).SetResult(res).Post("")
 
 	if err != nil {
 		return err
@@ -77,16 +75,16 @@ func (a *MachineAPI) CreateMachine(input api.LaunchMachineInput, app string, res
 	return nil
 }
 
-func (a *MachineAPI) UpdateMachine(input api.LaunchMachineInput, app string, id string, res *api.Machine) error {
-	lease, err := a.LockMachine(app, id, 30)
+func (a *MachineAPI) UpdateMachine(input api.LaunchMachineInput, id string, res *api.Machine) error {
+	lease, err := a.LockMachine(id, 30)
 	if err != nil {
 		return err
 	}
-	reqRes, err := a.httpClient.R().SetBody(input).SetResult(res).SetHeader(NonceHeader, lease.Data.Nonce).Post(fmt.Sprintf("http://%s/v1/apps/%s/machines/%s", a.endpoint, app, id))
+	reqRes, err := a.httpClient.R().SetBody(input).SetResult(res).SetHeader(NonceHeader, lease.Data.Nonce).Post(fmt.Sprintf("/%s", id))
 	if err != nil {
 		return err
 	}
-	err = a.ReleaseMachine(*lease, app, id)
+	err = a.ReleaseMachine(*lease, id)
 	if err != nil {
 		return err
 	}
@@ -96,28 +94,28 @@ func (a *MachineAPI) UpdateMachine(input api.LaunchMachineInput, app string, id 
 	return nil
 }
 
-func (a *MachineAPI) ReadMachine(app string, id string, res *api.Machine) (*hreq.Response, error) {
-	return a.httpClient.R().SetResult(res).Get(fmt.Sprintf("http://%s/v1/apps/%s/machines/%s", a.endpoint, app, id))
+func (a *MachineAPI) ReadMachine(id string, res *api.Machine) (*hreq.Response, error) {
+	return a.httpClient.R().SetResult(res).Get(fmt.Sprintf("/%s", id))
 }
 
-func (a *MachineAPI) DeleteMachine(app string, id string, maxRetries int) error {
+func (a *MachineAPI) DeleteMachine(id string, maxRetries int) error {
 	deleted := false
 	for i := 0; i < maxRetries; i++ {
 		var machine api.Machine
-		readResponse, err := a.httpClient.R().SetResult(&machine).Get(fmt.Sprintf("http://%s/v1/apps/%s/machines/%s", a.endpoint, app, id))
+		readResponse, err := a.httpClient.R().SetResult(&machine).Get(fmt.Sprintf("/%s", id))
 		if err != nil {
 			return err
 		}
 
 		if readResponse.StatusCode == 200 {
 			if machine.State == "started" || machine.State == "starting" || machine.State == "replacing" {
-				_, _ = a.httpClient.R().Post(fmt.Sprintf("http://%s/v1/apps/%s/machines/%s/stop", a.endpoint, app, id))
+				_, _ = a.httpClient.R().Post(fmt.Sprintf("/%s/stop", id))
 			}
 			if machine.State == "stopping" || machine.State == "destroying" {
 				time.Sleep(5 * time.Second)
 			}
 			if machine.State == "stopped" || machine.State == "replaced" {
-				_, err = a.httpClient.R().Delete(fmt.Sprintf("http://%s/v1/apps/%s/machines/%s", a.endpoint, app, id))
+				_, err = a.httpClient.R().Delete(fmt.Sprintf("/%s", id))
 				if err != nil {
 					return err
 				}
@@ -134,7 +132,7 @@ func (a *MachineAPI) DeleteMachine(app string, id string, maxRetries int) error 
 	return nil
 }
 
-func (a *MachineAPI) ListMachines(app string, res *Machines) (*hreq.Response, error) {
+func (a *MachineAPI) ListMachines(res *Machines) (*hreq.Response, error) {
 	*res = make(Machines, 0)
-	return a.httpClient.R().SetResult(res).Get(fmt.Sprintf("http://%s/v1/apps/%s/machines", a.endpoint, app))
+	return a.httpClient.R().SetResult(res).Get("")
 }

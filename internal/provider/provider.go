@@ -7,6 +7,7 @@ import (
 	providerGraphql "github.com/fly-apps/terraform-provider-fly/graphql"
 	"github.com/fly-apps/terraform-provider-fly/internal/utils"
 	"github.com/fly-apps/terraform-provider-fly/internal/wg"
+	"github.com/fly-apps/terraform-provider-fly/pkg/apiv1"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -50,6 +51,10 @@ type providerApi struct {
 	gqlClient    gqlClient
 	httpClient   hreq.Client
 	apiClient    api.Client
+}
+
+func (c *providerApi) machineApi(app string) *apiv1.MachineAPI {
+	return apiv1.NewMachineAPI(&c.httpClient, c.httpEndpoint, app)
 }
 
 func (c *providerApi) configure(providerData any, diags *diag.Diagnostics) {

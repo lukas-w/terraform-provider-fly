@@ -703,7 +703,7 @@ func (mr flyMachineResource) Create(ctx context.Context, req resource.CreateRequ
 		return
 	}
 
-	machineAPI := apiv1.NewMachineAPI(&mr.httpClient, mr.httpEndpoint)
+	machineAPI := mr.machineApi(data.App.Value)
 	mReq := data.makeMachineRequest(ctx, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
@@ -713,7 +713,7 @@ func (mr flyMachineResource) Create(ctx context.Context, req resource.CreateRequ
 		return
 	}
 	var machine api.Machine
-	err := machineAPI.CreateMachine(*mReq, data.App.Value, &machine)
+	err := machineAPI.CreateMachine(*mReq, &machine)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to create machine", err.Error())
 		return
@@ -723,7 +723,7 @@ func (mr flyMachineResource) Create(ctx context.Context, req resource.CreateRequ
 
 	resp.Diagnostics.Append(data.updateFromApiCreateData(machine)...)
 
-	err = machineAPI.WaitForMachine(data.App.Value, machine.ID, machine.InstanceID)
+	err = machineAPI.WaitForMachine(machine.ID, machine.InstanceID)
 	if err != nil {
 		//FIXME(?): For now we just assume that the orchestrator is in fact going to faithfully execute our request
 		tflog.Info(ctx, "Waiting errored")
@@ -740,10 +740,10 @@ func (mr flyMachineResource) Read(ctx context.Context, req resource.ReadRequest,
 	var data flyMachineResourceData
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 
-	machineAPI := apiv1.NewMachineAPI(&mr.httpClient, mr.httpEndpoint)
+	machineAPI := mr.machineApi(data.App.Value)
 
 	var machine api.Machine
-	_, err := machineAPI.ReadMachine(data.App.Value, data.Id.Value, &machine)
+	_, err := machineAPI.ReadMachine(data.Id.Value, &machine)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to get machine", err.Error())
 		return
@@ -765,13 +765,13 @@ func (mr flyMachineResource) Update(ctx context.Context, req resource.UpdateRequ
 		return
 	}
 
-	machineAPI := apiv1.NewMachineAPI(&mr.httpClient, mr.httpEndpoint)
+	machineAPI := mr.machineApi(state.App.Value)
 	mReq := plan.makeMachineRequest(ctx, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 	var machine api.Machine
-	err := machineAPI.UpdateMachine(*mReq, state.App.Value, state.Id.Value, &machine)
+	err := machineAPI.UpdateMachine(*mReq, state.Id.Value, &machine)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to update machine", err.Error())
 		return
@@ -779,7 +779,7 @@ func (mr flyMachineResource) Update(ctx context.Context, req resource.UpdateRequ
 
 	resp.Diagnostics.Append(state.updateFromApiData(machine)...)
 
-	err = machineAPI.WaitForMachine(state.App.Value, machine.ID, machine.InstanceID)
+	err = machineAPI.WaitForMachine(machine.ID, machine.InstanceID)
 	if err != nil {
 		tflog.Info(ctx, "Waiting errored")
 	}
@@ -795,9 +795,9 @@ func (mr flyMachineResource) Delete(ctx context.Context, req resource.DeleteRequ
 	var data flyMachineResourceData
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 
-	machineAPI := apiv1.NewMachineAPI(&mr.httpClient, mr.httpEndpoint)
+	machineAPI := mr.machineApi(data.App.Value)
 
-	err := machineAPI.DeleteMachine(data.App.Value, data.Id.Value, 50)
+	err := machineAPI.DeleteMachine(data.Id.Value, 50)
 	if err != nil {
 		resp.Diagnostics.AddError("Machine delete failed", err.Error())
 	}
