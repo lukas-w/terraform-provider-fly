@@ -15,7 +15,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/superfly/flyctl/api"
-	"time"
 )
 
 var _ resource.ResourceWithConfigure = &flyMachineResource{}
@@ -81,26 +80,28 @@ type TfMetric struct {
 }
 
 type TfCheck struct {
-	Type       types.String `tfsdk:"type"`
-	Port       types.Int64  `tfsdk:"port"`
-	Interval   types.String `tfsdk:"interval"`
-	Timeout    types.String `tfsdk:"timeout"`
-	HttpMethod types.String `tfsdk:"http_method"`
-	HttpPath   types.String `tfsdk:"http_path"`
+	Type       types.String  `tfsdk:"type"`
+	Port       types.Int64   `tfsdk:"port"`
+	Interval   DurationValue `tfsdk:"interval"`
+	Timeout    DurationValue `tfsdk:"timeout"`
+	HttpMethod types.String  `tfsdk:"http_method"`
+	HttpPath   types.String  `tfsdk:"http_path"`
 }
 
 func checkFromApi(c api.MachineCheck) (r TfCheck) {
 	r.Type = types.String{Value: c.Type}
 	r.Port = types.Int64{Value: int64(c.Port)}
-	r.Interval = types.String{Value: c.Interval.String()}
-	r.Timeout = types.String{Value: c.Timeout.String()}
-	r.HttpPath = types.String{Null: c.HTTPPath != nil}
-	r.HttpMethod = types.String{Null: c.HTTPMethod != nil}
+	r.Interval = DurationValue{Value: c.Interval.Duration}
+	r.Timeout = DurationValue{Value: c.Timeout.Duration}
 	if c.HTTPPath != nil {
 		r.HttpPath.Value = *c.HTTPPath
+	} else {
+		r.HttpPath.Null = true
 	}
 	if c.HTTPMethod != nil {
 		r.HttpMethod.Value = *c.HTTPMethod
+	} else {
+		r.HttpMethod.Null = true
 	}
 	return
 }
@@ -127,32 +128,27 @@ type flyMachineResourceData struct {
 	Checks    map[string]TfCheck `tfsdk:"checks"`
 }
 
-func (d *flyMachineResourceData) updateFromApiData(m api.Machine) (diags diag.Diagnostics) {
+func (d *flyMachineResourceData) updateGuestFromApiData(g *api.MachineGuest) {
+	if g != nil {
+		d.Guest = types.Object{AttrTypes: TfGuestAttrTypes, Attrs: map[string]attr.Value{
+			"cpus":        types.Int64{Value: int64(g.CPUs)},
+			"memory_mb":   types.Int64{Value: int64(g.MemoryMB)},
+			"cpu_kind":    types.String{Value: g.CPUKind},
+			"kernel_args": utils.StringSliceToTfList(g.KernelArgs),
+		}}
+	} else {
+		d.Guest = types.Object{AttrTypes: TfGuestAttrTypes, Null: true}
+	}
+}
+
+// CreateMachine response is incomplete, so to avoid deleting data we only set selected fields here
+func (d *flyMachineResourceData) updateFromApiCreateData(m api.Machine) (diags diag.Diagnostics) {
 	d.Name = types.String{Value: m.Name}
-	d.Region = types.String{Value: m.Region}
 	d.Id = types.String{Value: m.ID}
 	d.PrivateIP = types.String{Value: m.PrivateIP}
-	d.Image = types.String{Value: m.Config.Image}
-	if m.Config.Guest != nil {
-		d.Guest = types.Object{AttrTypes: TfGuestAttrTypes, Attrs: map[string]attr.Value{
-			"cpus":        types.Int64{Value: int64(m.Config.Guest.CPUs)},
-			"memory_mb":   types.Int64{Value: int64(m.Config.Guest.MemoryMB)},
-			"cpu_kind":    types.String{Value: m.Config.Guest.CPUKind},
-			"kernel_args": utils.StringSliceToTfList(m.Config.Guest.KernelArgs),
-		}}
-	}
-	d.Cmd = m.Config.Init.Cmd
-	d.Entrypoint = m.Config.Init.Entrypoint
-	d.Exec = m.Config.Init.Exec
-	d.Env = utils.KVToTfMap(m.Config.Env, types.StringType)
 	d.Metadata = utils.KVToTfMap(m.Config.Metadata, types.StringType)
-
-	tfServices := ServicesToTfServices(m.Config.Services)
-	if d.Services == nil && len(tfServices) == 0 {
-		tfServices = nil
-	}
-	d.Services = tfServices
-
+	d.Env = utils.KVToTfMap(m.Config.Env, types.StringType)
+	d.updateGuestFromApiData(m.Config.Guest)
 	if len(m.Config.Mounts) > 0 {
 		var mounts []TfMachineMount
 		for _, m := range m.Config.Mounts {
@@ -164,7 +160,28 @@ func (d *flyMachineResourceData) updateFromApiData(m api.Machine) (diags diag.Di
 			})
 		}
 		d.Mounts = mounts
+	} else {
+		d.Mounts = nil
 	}
+	return
+}
+
+func (d *flyMachineResourceData) updateFromApiData(m api.Machine) (diags diag.Diagnostics) {
+	diags.Append(d.updateFromApiCreateData(m)...)
+	if diags.HasError() {
+		return
+	}
+	d.Region = types.String{Value: m.Region}
+	d.Image = types.String{Value: m.Config.Image}
+	d.Cmd = m.Config.Init.Cmd
+	d.Entrypoint = m.Config.Init.Entrypoint
+	d.Exec = m.Config.Init.Exec
+
+	tfServices := ServicesToTfServices(m.Config.Services)
+	if d.Services == nil && len(tfServices) == 0 {
+		tfServices = nil
+	}
+	d.Services = tfServices
 
 	if len(m.Config.Processes) > 0 {
 		d.Processes = make([]TfProcess, len(m.Config.Processes))
@@ -199,14 +216,18 @@ func (d *flyMachineResourceData) updateFromApiData(m api.Machine) (diags diag.Di
 
 	if m.Config.Restart.Policy != "" {
 		d.Restart = &TfRestart{
-			Policy:     types.String{Value: string(m.Config.Restart.Policy)},
-			MaxRetries: types.Int64{Value: int64(m.Config.Restart.MaxRetries)},
+			Policy: types.String{Value: string(m.Config.Restart.Policy)},
+		}
+		if d.Restart.Policy.Value == string(api.MachineRestartPolicyOnFailure) {
+			d.Restart.MaxRetries = types.Int64{Value: int64(m.Config.Restart.MaxRetries)}
+		} else {
+			d.Restart.MaxRetries = types.Int64{Null: true}
 		}
 	}
 	return
 }
 
-func (d *flyMachineResourceData) makeMachineRequest(ctx context.Context, diags diag.Diagnostics) *api.LaunchMachineInput {
+func (d *flyMachineResourceData) makeMachineRequest(ctx context.Context, diags *diag.Diagnostics) *api.LaunchMachineInput {
 	conf := api.MachineConfig{
 		Image:    d.Image.Value,
 		Services: TfServicesToServices(d.Services),
@@ -220,8 +241,8 @@ func (d *flyMachineResourceData) makeMachineRequest(ctx context.Context, diags d
 	if !d.Guest.IsNull() && !d.Guest.IsUnknown() {
 		conf.Guest = &api.MachineGuest{
 			CPUs:     int(d.Guest.Attrs["cpus"].(types.Int64).Value),
-			CPUKind:  d.Guest.Attrs["cpu_king"].(types.String).Value,
-			MemoryMB: int(d.Guest.Attrs["cpus"].(types.Int64).Value),
+			CPUKind:  d.Guest.Attrs["cpu_kind"].(types.String).Value,
+			MemoryMB: int(d.Guest.Attrs["memory_mb"].(types.Int64).Value),
 		}
 		diags.Append(d.Guest.Attrs["kernel_args"].(types.List).ElementsAs(ctx, &conf.Guest.KernelArgs, false)...)
 		if diags.HasError() {
@@ -277,25 +298,17 @@ func (d *flyMachineResourceData) makeMachineRequest(ctx context.Context, diags d
 
 	conf.Checks = make(map[string]api.MachineCheck, len(d.Checks))
 	for k, c := range d.Checks {
-		interval, err := time.ParseDuration(c.Interval.Value)
-		if err != nil {
-			diags.AddError("Can't parse interval", err.Error())
-		}
-		timeout, err := time.ParseDuration(c.Timeout.Value)
-		if err != nil {
-			diags.AddError("Can't parse timeout", err.Error())
-		}
 		ac := api.MachineCheck{
 			Type:     c.Type.Value,
 			Port:     uint16(c.Port.Value),
-			Interval: &api.Duration{Duration: interval},
-			Timeout:  &api.Duration{Duration: timeout},
+			Interval: &api.Duration{Duration: c.Interval.Value},
+			Timeout:  &api.Duration{Duration: c.Timeout.Value},
 		}
 		if !c.HttpPath.IsNull() && !c.HttpPath.IsUnknown() {
-			ac.HTTPPath = &c.HttpPath.Value
+			ac.HTTPPath = api.StringPointer(c.HttpPath.Value)
 		}
 		if !c.HttpMethod.IsNull() && !c.HttpMethod.IsUnknown() {
-			ac.HTTPMethod = &c.HttpMethod.Value
+			ac.HTTPMethod = api.StringPointer(c.HttpMethod.Value)
 		}
 		conf.Checks[k] = ac
 	}
@@ -337,6 +350,7 @@ func (flyMachineResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnos
 				Computed:            true,
 				PlanModifiers: tfsdk.AttributePlanModifiers{
 					resource.RequiresReplace(),
+					resource.UseStateForUnknown(),
 				},
 				Type: types.StringType,
 			},
@@ -352,16 +366,18 @@ func (flyMachineResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnos
 				MarkdownDescription: "machine id",
 				Computed:            true,
 				Type:                types.StringType,
+				PlanModifiers:       []tfsdk.AttributePlanModifier{resource.UseStateForUnknown()},
 			},
 			"app": {
 				MarkdownDescription: "fly app",
-				Optional:            true,
+				Required:            true,
 				Type:                types.StringType,
 			},
 			"private_ip": {
 				MarkdownDescription: "Private IP",
 				Computed:            true,
 				Type:                types.StringType,
+				PlanModifiers:       []tfsdk.AttributePlanModifier{resource.UseStateForUnknown()},
 			},
 			"cmd": {
 				MarkdownDescription: "cmd",
@@ -411,7 +427,6 @@ func (flyMachineResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnos
 					},
 					"kernel_args": {
 						Optional: true,
-						Computed: true,
 						Type:     types.ListType{ElemType: types.StringType},
 					},
 				}),
@@ -427,9 +442,10 @@ func (flyMachineResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnos
 				Optional:            true,
 				Attributes: tfsdk.ListNestedAttributes(map[string]tfsdk.Attribute{
 					"encrypted": {
-						Optional: true,
-						Computed: true,
-						Type:     types.BoolType,
+						Optional:      true,
+						Computed:      true,
+						Type:          types.BoolType,
+						PlanModifiers: []tfsdk.AttributePlanModifier{resource.UseStateForUnknown()},
 					},
 					"path": {
 						Required:            true,
@@ -437,9 +453,10 @@ func (flyMachineResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnos
 						Type:                types.StringType,
 					},
 					"size_gb": {
-						Optional: true,
-						Computed: true,
-						Type:     types.Int64Type,
+						Optional:      true,
+						Computed:      true,
+						Type:          types.Int64Type,
+						PlanModifiers: []tfsdk.AttributePlanModifier{resource.UseStateForUnknown()},
 					},
 					"volume": {
 						Required:            true,
@@ -573,11 +590,11 @@ func (flyMachineResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnos
 						Optional: true,
 					},
 					"interval": {
-						Type:     types.StringType,
+						Type:     DurationType{},
 						Optional: true,
 					},
 					"timeout": {
-						Type:     types.StringType,
+						Type:     DurationType{},
 						Optional: true,
 					},
 					"http_method": {
@@ -591,15 +608,16 @@ func (flyMachineResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnos
 				}),
 			},
 			"metadata": {
-				Optional: true,
-				Computed: true,
-				Type:     types.MapType{ElemType: types.StringType},
+				Optional:      true,
+				Computed:      true,
+				Type:          types.MapType{ElemType: types.StringType},
+				PlanModifiers: []tfsdk.AttributePlanModifier{modifiers.Default(types.Map{ElemType: types.StringType, Elems: map[string]attr.Value{}})},
 			},
 		},
 	}, nil
 }
 
-func (mr flyMachineResource) ValidateOpenTunnel(diags diag.Diagnostics) bool {
+func (mr flyMachineResource) ValidateOpenTunnel(diags *diag.Diagnostics) bool {
 	_, err := mr.httpClient.R().Get(fmt.Sprintf("http://%s", mr.httpEndpoint))
 	if err != nil {
 		diags.AddError("fly wireguard tunnel must be open", "can't connect to the api, is the tunnel open? :)")
@@ -675,7 +693,7 @@ func ServicesToTfServices(input []api.MachineService) []TfService {
 }
 
 func (mr flyMachineResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	if !mr.ValidateOpenTunnel(resp.Diagnostics) {
+	if !mr.ValidateOpenTunnel(&resp.Diagnostics) {
 		return
 	}
 
@@ -687,8 +705,12 @@ func (mr flyMachineResource) Create(ctx context.Context, req resource.CreateRequ
 	}
 
 	machineAPI := apiv1.NewMachineAPI(&mr.httpClient, mr.httpEndpoint)
-	mReq := data.makeMachineRequest(ctx, resp.Diagnostics)
+	mReq := data.makeMachineRequest(ctx, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+	if mReq == nil {
+		resp.Diagnostics.AddError("error creating machine request", "Request is nil. This is a bug.")
 		return
 	}
 	var machine api.Machine
@@ -700,7 +722,7 @@ func (mr flyMachineResource) Create(ctx context.Context, req resource.CreateRequ
 
 	tflog.Info(ctx, fmt.Sprintf("%+v", machine))
 
-	resp.Diagnostics.Append(data.updateFromApiData(machine)...)
+	resp.Diagnostics.Append(data.updateFromApiCreateData(machine)...)
 
 	err = machineAPI.WaitForMachine(data.App.Value, machine.ID, machine.InstanceID)
 	if err != nil {
@@ -712,7 +734,7 @@ func (mr flyMachineResource) Create(ctx context.Context, req resource.CreateRequ
 }
 
 func (mr flyMachineResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	if !mr.ValidateOpenTunnel(resp.Diagnostics) {
+	if !mr.ValidateOpenTunnel(&resp.Diagnostics) {
 		return
 	}
 
@@ -733,7 +755,7 @@ func (mr flyMachineResource) Read(ctx context.Context, req resource.ReadRequest,
 }
 
 func (mr flyMachineResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	if !mr.ValidateOpenTunnel(resp.Diagnostics) {
+	if !mr.ValidateOpenTunnel(&resp.Diagnostics) {
 		return
 	}
 
@@ -745,7 +767,7 @@ func (mr flyMachineResource) Update(ctx context.Context, req resource.UpdateRequ
 	}
 
 	machineAPI := apiv1.NewMachineAPI(&mr.httpClient, mr.httpEndpoint)
-	mReq := plan.makeMachineRequest(ctx, resp.Diagnostics)
+	mReq := plan.makeMachineRequest(ctx, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -767,7 +789,7 @@ func (mr flyMachineResource) Update(ctx context.Context, req resource.UpdateRequ
 }
 
 func (mr flyMachineResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	if !mr.ValidateOpenTunnel(resp.Diagnostics) {
+	if !mr.ValidateOpenTunnel(&resp.Diagnostics) {
 		return
 	}
 

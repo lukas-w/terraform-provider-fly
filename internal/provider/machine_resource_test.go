@@ -354,3 +354,70 @@ resource "fly_machine" "testMachine" {
 }
 `, providerConfig(), app, getTestRegion())
 }
+
+func TestAccFlyMachineGuest(t *testing.T) {
+	t.Parallel()
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		PreCheck:                 func() { testAccPreCheck(t) },
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(`
+%s
+
+resource "fly_machine" "testMachine" {
+	app = "%s"
+	region = "%s"
+	image = "nginx:latest"
+	guest = {
+		memory_mb = 256
+		cpus = 1
+		cpu_kind = "shared"
+	}
+}
+`, providerConfig(), os.Getenv("FLY_TF_TEST_APP"), getTestRegion()),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("fly_machine.testMachine", "guest.memory_mb", "256"),
+					resource.TestCheckResourceAttr("fly_machine.testMachine", "guest.cpus", "1"),
+					resource.TestCheckResourceAttr("fly_machine.testMachine", "guest.cpu_kind", "shared"),
+					resource.TestCheckNoResourceAttr("fly_machine.testMachine", "guest.kernel_args"),
+				),
+			},
+		},
+	})
+}
+
+func TestAccFlyMachineChecks(t *testing.T) {
+	t.Parallel()
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		PreCheck:                 func() { testAccPreCheck(t) },
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(`
+%s
+
+resource "fly_machine" "testMachine" {
+	app = "%s"
+	region = "%s"
+	image = "nginx:latest"
+	
+	checks = {
+		pg = {
+			type      = "http"
+			port      = 5500
+			http_path = "/check"
+			interval  = "30s"
+			timeout   = "5s"
+		}
+	}
+}
+`, providerConfig(), os.Getenv("FLY_TF_TEST_APP"), getTestRegion()),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("fly_machine.testMachine", "checks.pg.type", "http"),
+					resource.TestCheckResourceAttr("fly_machine.testMachine", "checks.pg.port", "5500"),
+				),
+			},
+		},
+	})
+}
