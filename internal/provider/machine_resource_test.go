@@ -407,7 +407,7 @@ resource "fly_machine" "testMachine" {
 			type      = "http"
 			port      = 5500
 			http_path = "/check"
-			interval  = "30s"
+			interval  = "1m"
 			timeout   = "5s"
 		}
 	}

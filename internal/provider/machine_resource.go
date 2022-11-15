@@ -80,30 +80,37 @@ type TfMetric struct {
 }
 
 type TfCheck struct {
-	Type       types.String  `tfsdk:"type"`
-	Port       types.Int64   `tfsdk:"port"`
-	Interval   DurationValue `tfsdk:"interval"`
-	Timeout    DurationValue `tfsdk:"timeout"`
-	HttpMethod types.String  `tfsdk:"http_method"`
-	HttpPath   types.String  `tfsdk:"http_path"`
+	Type       types.String      `tfsdk:"type"`
+	Port       types.Int64       `tfsdk:"port"`
+	Interval   DurationAttrValue `tfsdk:"interval"`
+	Timeout    DurationAttrValue `tfsdk:"timeout"`
+	HttpMethod types.String      `tfsdk:"http_method"`
+	HttpPath   types.String      `tfsdk:"http_path"`
 }
 
-func checkFromApi(c api.MachineCheck) (r TfCheck) {
-	r.Type = types.String{Value: c.Type}
-	r.Port = types.Int64{Value: int64(c.Port)}
-	r.Interval = DurationValue{Value: c.Interval.Duration}
-	r.Timeout = DurationValue{Value: c.Timeout.Duration}
-	if c.HTTPPath != nil {
-		r.HttpPath.Value = *c.HTTPPath
-	} else {
-		r.HttpPath.Null = true
+func (c *TfCheck) updateFromApi(ac api.MachineCheck, diags *diag.Diagnostics) {
+	c.Type = types.String{Value: ac.Type}
+	c.Port = types.Int64{Value: int64(ac.Port)}
+	if ac.Interval == nil {
+		c.Interval = DurationNull()
+	} else if c.Interval.IsUnknown() || c.Interval.IsNull() || !c.Interval.EqualDuration(ac.Interval.Duration) {
+		c.Interval = DurationValueFromDuration(ac.Interval.Duration)
 	}
-	if c.HTTPMethod != nil {
-		r.HttpMethod.Value = *c.HTTPMethod
-	} else {
-		r.HttpMethod.Null = true
+	if ac.Timeout == nil {
+		c.Timeout = DurationNull()
+	} else if c.Timeout.IsUnknown() || c.Timeout.IsNull() || !c.Timeout.EqualDuration(ac.Timeout.Duration) {
+		c.Timeout = DurationValueFromDuration(ac.Timeout.Duration)
 	}
-	return
+	if ac.HTTPPath != nil {
+		c.HttpPath.Value = *ac.HTTPPath
+	} else {
+		c.HttpPath.Null = true
+	}
+	if ac.HTTPMethod != nil {
+		c.HttpMethod.Value = *ac.HTTPMethod
+	} else {
+		c.HttpMethod.Null = true
+	}
 }
 
 type flyMachineResourceData struct {

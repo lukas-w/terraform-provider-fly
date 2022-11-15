@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -21,32 +22,33 @@ func (d DurationType) TerraformType(ctx context.Context) tftypes.Type {
 
 func (d DurationType) ValueFromTerraform(ctx context.Context, value tftypes.Value) (attr.Value, error) {
 	if value.IsNull() {
-		return DurationValue{Null: true}, nil
+		return DurationNull(), nil
 	}
 	if !value.IsKnown() {
-		return DurationValue{Unknown: true}, nil
+		return DurationAttrValue{unknown: true}, nil
 	}
 	var s string
 	if err := value.As(&s); err != nil {
 		return nil, err
 	}
-	duration, err := time.ParseDuration(s)
+	// XXX: Is this right?
+	if s == "" {
+		return DurationNull(), nil
+	}
+	_, err := time.ParseDuration(s)
 	if err != nil {
 		return nil, err
 	}
-	return DurationValue{Value: duration}, nil
+	return DurationAttrValue{value: s}, nil
 }
 
 func (d DurationType) ValueType(context.Context) attr.Value {
-	return DurationValue{Null: true}
+	return DurationNull()
 }
 
 func (d DurationType) Equal(o attr.Type) bool {
-	other, ok := o.(DurationType)
-	if !ok {
-		return false
-	}
-	return o == other
+	_, ok := o.(DurationType)
+	return ok
 }
 
 func (d DurationType) String() string {
@@ -58,48 +60,100 @@ func (d DurationType) ApplyTerraform5AttributePathStep(step tftypes.AttributePat
 }
 
 func (d DurationType) Validate(_ context.Context, value tftypes.Value, path path.Path) (diags diag.Diagnostics) {
+	if value.IsNull() || !value.IsKnown() {
+		return
+	}
 	var s string
 	if err := value.As(&s); err != nil {
 		diags.AddAttributeError(path, "invalid value", "can't use as string")
 		return
 	}
+	if s == "" {
+		return
+	}
 	_, err := time.ParseDuration(s)
 	if err != nil {
-		diags.AddAttributeError(path, "value is not a valid duration", err.Error())
+		diags.AddAttributeError(path, fmt.Sprintf("value at %s is not a valid duration", path.String()), err.Error())
 	}
 	return
 }
 
-type DurationValue struct {
-	Value   time.Duration
-	Null    bool
-	Unknown bool
+type DurationAttrValue struct {
+	value   string
+	unknown bool
 }
 
-func (d DurationValue) Type(context.Context) attr.Type {
+func (d DurationAttrValue) Type(context.Context) attr.Type {
 	return DurationType{}
 }
 
-func (d DurationValue) ToTerraformValue(context.Context) (tftypes.Value, error) {
-	return tftypes.NewValue(tftypes.String, d.Value.String()), nil
+func (d DurationAttrValue) ToTerraformValue(context.Context) (tftypes.Value, error) {
+	return tftypes.NewValue(tftypes.String, d.value), nil
 }
 
-func (d DurationValue) Equal(value attr.Value) bool {
+func (d DurationAttrValue) EqualDuration(o time.Duration) bool {
+	if d.unknown || d.IsNull() {
+		return false
+	}
+	return *d.GetDuration() == o
+}
+
+func (d DurationAttrValue) GetDuration() *time.Duration {
+	if d.unknown || d.IsNull() {
+		return nil
+	}
+	dur, err := time.ParseDuration(d.value)
+	if err != nil {
+		panic("DurationAttrValue holds invalid duration string")
+	}
+	return &dur
+}
+
+func (d DurationAttrValue) Equal(value attr.Value) bool {
+	if d.unknown != value.IsUnknown() {
+		return false
+	}
+	if d.IsNull() != value.IsNull() {
+		return false
+	}
+	if d.unknown || d.IsNull() {
+		return true
+	}
 	d2, err := time.ParseDuration(value.String())
 	if err != nil {
 		return false
 	}
-	return d.Value == d2
+	d1, err := time.ParseDuration(d.value)
+	if err != nil {
+		return false
+	}
+	return d1 == d2
 }
 
-func (d DurationValue) IsNull() bool {
-	return d.Null
+func (d DurationAttrValue) IsNull() bool {
+	return d.value == "" && !d.unknown
 }
 
-func (d DurationValue) IsUnknown() bool {
-	return d.Unknown
+func (d DurationAttrValue) IsUnknown() bool {
+	return d.unknown
 }
 
-func (d DurationValue) String() string {
-	return d.Value.String()
+func (d DurationAttrValue) String() string {
+	return d.value
+}
+
+func DurationNull() DurationAttrValue {
+	return DurationAttrValue{}
+}
+
+func DurationValueFromString(duration string, diags *diag.Diagnostics) DurationAttrValue {
+	_, err := time.ParseDuration(duration)
+	if err != nil {
+		diags.AddError("invalid duration value", err.Error())
+		return DurationNull()
+	}
+	return DurationAttrValue{value: duration}
+}
+func DurationValueFromDuration(duration time.Duration) DurationAttrValue {
+	return DurationAttrValue{value: duration.String()}
 }
