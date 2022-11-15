@@ -14,31 +14,38 @@ type pgResource struct {
 }
 
 func (r pgResource) getPgClient(ctx context.Context, app string, diags *diag.Diagnostics) *hreq.Client {
+	leaderIp := r.getLeaderIP(ctx, app, diags)
+	if diags.HasError() {
+		return nil
+	}
+	return r.httpClient.Clone().SetBaseURL(fmt.Sprintf("http://%s:5500", leaderIp))
+}
+
+func (r pgResource) getLeaderIP(ctx context.Context, app string, diags *diag.Diagnostics) string {
 	machineAPI := r.machineApi(app)
 
 	var machines apiv1.Machines
 	_, err := machineAPI.ListMachines(&machines)
 	if err != nil {
 		diags.AddError("Error in ListMachines", err.Error())
-		return nil
+		return ""
 	}
 	if len(machines) == 0 {
 		diags.AddError("Can't connect to postgres", fmt.Sprintf("App %s has no machines", app))
-		return nil
+		return ""
 	}
 	machines = machines.WithoutInactive()
 	if len(machines) == 0 {
 		diags.AddError("Can't connect to postgres", fmt.Sprintf("App %s has no active machines", app))
-		return nil
+		return ""
 	}
 
 	leader := findLeader(machines)
 	if leader == nil {
 		diags.AddError("Can't connect to postgres", fmt.Sprintf("Postgres cluster %s has no leader", app))
-		return nil
+		return ""
 	}
-
-	return r.httpClient.Clone().SetBaseURL(fmt.Sprintf("http://%s:5500", leader.PrivateIP))
+	return leader.PrivateIP
 }
 
 func machineRole(machine *api.Machine) (role string) {
