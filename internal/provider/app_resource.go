@@ -197,9 +197,13 @@ func (r flyAppResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnosti
 				PlanModifiers:       []tfsdk.AttributePlanModifier{resource.UseStateForUnknown()},
 			},
 			"role_id": {
-				Type:          types.StringType,
-				Optional:      true,
-				PlanModifiers: []tfsdk.AttributePlanModifier{modifiers.Default(types.String{Null: true})},
+				Type:     types.StringType,
+				Optional: true,
+				PlanModifiers: []tfsdk.AttributePlanModifier{
+					modifiers.Default(types.String{Null: true}),
+					resource.RequiresReplace(),
+				},
+			},
 			"enable_postgres_consul": {
 				Type:     types.BoolType,
 				Optional: true,
