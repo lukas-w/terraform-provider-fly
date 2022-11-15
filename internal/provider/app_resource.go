@@ -270,7 +270,7 @@ func (r flyAppResource) Read(ctx context.Context, req resource.ReadRequest, resp
 	var errList gqlerror.List
 	if errors.As(err, &errList) {
 		for _, err := range errList {
-			if err.Message == "Could not resolve " {
+			if strings.Contains(strings.ToLower(err.Message), "could not find app") {
 				resp.State.RemoveResource(ctx)
 				return
 			} else {
