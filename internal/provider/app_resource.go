@@ -43,14 +43,16 @@ type secretMap map[string]appSecret
 //type secretMap types.Map
 
 type flyAppResourceData struct {
-	Name     types.String `tfsdk:"name"`
-	Org      types.String `tfsdk:"org"`
-	OrgId    types.String `tfsdk:"orgid"`
-	AppUrl   types.String `tfsdk:"appurl"`
-	Id       types.String `tfsdk:"id"`
-	Machines types.Bool   `tfsdk:"machines"`
-	Secrets  secretMap    `tfsdk:"secrets"`
-	RoleId   types.String `tfsdk:"role_id"`
+	Name                 types.String `tfsdk:"name"`
+	Org                  types.String `tfsdk:"org"`
+	OrgId                types.String `tfsdk:"orgid"`
+	AppUrl               types.String `tfsdk:"appurl"`
+	Id                   types.String `tfsdk:"id"`
+	Machines             types.Bool   `tfsdk:"machines"`
+	Secrets              secretMap    `tfsdk:"secrets"`
+	RoleId               types.String `tfsdk:"role_id"`
+	EnablePostgresConsul types.Bool   `tfsdk:"enable_postgres_consul"`
+	ConsulUrl            types.String `tfsdk:"consul_url"`
 }
 
 func (d *flyAppResourceData) setSecret(name string, secret appSecret) {
@@ -130,6 +132,7 @@ func (r flyAppResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnosti
 	}
 
 	return tfsdk.Schema{
+		Version:             1,
 		MarkdownDescription: "Fly app resource",
 		Attributes: map[string]tfsdk.Attribute{
 			"name": {
@@ -197,9 +200,44 @@ func (r flyAppResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnosti
 				Type:          types.StringType,
 				Optional:      true,
 				PlanModifiers: []tfsdk.AttributePlanModifier{modifiers.Default(types.String{Null: true})},
+			"enable_postgres_consul": {
+				Type:     types.BoolType,
+				Optional: true,
+				Computed: true,
+				PlanModifiers: []tfsdk.AttributePlanModifier{
+					modifiers.Default(types.Bool{Value: false}),
+					resource.RequiresReplaceIf(
+						func(ctx context.Context, state, config attr.Value, path path.Path) (replace bool, diags diag.Diagnostics) {
+							var before, after bool
+							diags.Append(tfsdk.ValueAs(ctx, state, &before)...)
+							diags.Append(tfsdk.ValueAs(ctx, config, &after)...)
+							return before && !after, diags
+						},
+						"postgres_consul cannot be disabled",
+						"postgres_consul cannot be disabled",
+					),
+				},
+			},
+			"consul_url": {
+				Type:      types.StringType,
+				Computed:  true,
+				Sensitive: true,
 			},
 		},
 	}, nil
+}
+
+func (r flyAppResource) UpgradeState(ctx context.Context) map[int64]resource.StateUpgrader {
+	return map[int64]resource.StateUpgrader{
+		0: {
+			StateUpgrader: func(ctx context.Context, req resource.UpgradeStateRequest, resp *resource.UpgradeStateResponse) {
+				var data flyAppResourceData
+				resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+				data.EnablePostgresConsul = types.Bool{Null: true}
+				resp.Diagnostics.Append(resp.State.Set(ctx, data)...)
+			},
+		},
+	}
 }
 
 func newAppResource() resource.Resource {
@@ -246,14 +284,35 @@ func (r flyAppResource) Create(ctx context.Context, req resource.CreateRequest, 
 		return
 	}
 
+	if data.EnablePostgresConsul.Equal(types.Bool{Value: true}) {
+		resp.Diagnostics.Append(r.enablePostgresConsul(ctx, &data, &resp.State)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	} else {
+		data.ConsulUrl = types.String{Null: true}
+	}
+
 	if len(data.Secrets) > 0 {
-		r.setSecrets(ctx, data.Name.Value, data.Secrets, &resp.Diagnostics)
+		r.setSecrets(ctx, data, data.Secrets, &resp.Diagnostics)
 		if resp.Diagnostics.HasError() {
 			return
 		}
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+func (r flyAppResource) enablePostgresConsul(ctx context.Context, data *flyAppResourceData, state *tfsdk.State) (diags diag.Diagnostics) {
+	consulPayload, err := r.apiClient.EnablePostgresConsul(ctx, data.Name.Value)
+	if err != nil {
+		diags.AddError("EnablePostgresConsul failed", err.Error())
+	} else {
+		data.EnablePostgresConsul = types.Bool{Value: true}
+		data.ConsulUrl = types.String{Value: consulPayload.ConsulURL}
+		diags.Append(state.Set(ctx, &data)...)
+	}
+	return
 }
 
 func (r flyAppResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -320,6 +379,18 @@ func (r flyAppResource) Update(ctx context.Context, req resource.UpdateRequest, 
 		}
 	}
 
+	state.Machines = plan.Machines
+
+	if plan.EnablePostgresConsul.Equal(types.Bool{Value: true}) {
+		resp.Diagnostics.Append(r.enablePostgresConsul(ctx, &state, &resp.State)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	} else {
+		state.EnablePostgresConsul = plan.EnablePostgresConsul
+		state.ConsulUrl = types.String{Null: true}
+	}
+
 	// Unset secrets that were removed from config
 	var removedSecrets []string
 	for k := range state.Secrets {
@@ -348,7 +419,7 @@ func (r flyAppResource) Update(ctx context.Context, req resource.UpdateRequest, 
 		}
 	}
 	if len(newSecrets) > 0 {
-		r.setSecrets(ctx, state.Name.Value, newSecrets, &resp.Diagnostics)
+		r.setSecrets(ctx, state, newSecrets, &resp.Diagnostics)
 		for k, s := range newSecrets {
 			state.setSecret(k, s)
 		}
@@ -396,7 +467,7 @@ func (r flyAppResource) resolveOrganization(ctx context.Context, slug types.Stri
 
 // setSecrets sets the app's secrets specified in the secret map `secrets` and
 // writes back `digest` and `createdAt` attributes.
-func (r flyAppResource) setSecrets(ctx context.Context, appName string, secrets secretMap, diags *diag.Diagnostics) {
+func (r flyAppResource) setSecrets(ctx context.Context, data flyAppResourceData, secrets secretMap, diags *diag.Diagnostics) {
 	inputs := make([]graphql.SecretInput, len(secrets))
 	i := 0
 	for k, v := range secrets {
@@ -407,8 +478,18 @@ func (r flyAppResource) setSecrets(ctx context.Context, appName string, secrets 
 		i++
 	}
 
+	if data.EnablePostgresConsul.Equal(types.Bool{Value: true}) {
+		if data.ConsulUrl.IsUnknown() || data.ConsulUrl.IsNull() {
+			diags.AddError("failed enabling postgres_consul", "enable_postgres_consul is true but consul_url is still unknown. This is a bug")
+		}
+		inputs = append(inputs, graphql.SecretInput{
+			Key:   "FLY_CONSUL_URL",
+			Value: data.ConsulUrl.Value,
+		})
+	}
+
 	resp, err := graphql.SetSecrets(ctx, r.gqlClient, graphql.SetSecretsInput{
-		AppId:      appName,
+		AppId:      data.Name.Value,
 		Secrets:    inputs,
 		ReplaceAll: false,
 	})
@@ -419,7 +500,7 @@ func (r flyAppResource) setSecrets(ctx context.Context, appName string, secrets 
 			// Secrets may have been added outside of Terraform. To prevent unknown value errors, we need to fetch
 			// digest and createdAt attributes for secrets that don't have those values missing in state
 			diags.AddWarning("State may have drifted", "Secrets may have been added or changed outside of Terraform. Refreshing secret state, you may need to re-apply your Terraform config.")
-			r.getSecretComputedValues(ctx, appName, secrets, diags)
+			r.getSecretComputedValues(ctx, data.Name.Value, secrets, diags)
 		} else {
 			diags.AddError("SetSecrets errored", err.Error())
 		}
