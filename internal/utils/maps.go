@@ -5,16 +5,19 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-func KVToTfMap(kv map[string]string, elemType attr.Type) types.Map {
-	var TFMap types.Map
-	TFMap.ElemType = elemType
-	for key, value := range kv {
-		if TFMap.Elems == nil {
-			TFMap.Elems = map[string]attr.Value{}
+func KVToTfMap(kv map[string]string, elemType attr.Type, emptyIfNull bool) (tfMap types.Map) {
+	tfMap.ElemType = elemType
+	tfMap.Elems = map[string]attr.Value{}
+	if kv == nil {
+		if !emptyIfNull {
+			tfMap.Null = true
 		}
-		TFMap.Elems[key] = types.String{Value: value}
+		return
 	}
-	return TFMap
+	for key, value := range kv {
+		tfMap.Elems[key] = types.String{Value: value}
+	}
+	return
 }
 
 func StringSliceToTfList(slice []string) (list types.List) {

@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/superfly/flyctl/api"
+	"time"
 )
 
 var _ resource.ResourceWithConfigure = &flyMachineResource{}
@@ -133,6 +134,9 @@ type flyMachineResourceData struct {
 	Restart   *TfRestart         `tfsdk:"restart"`
 	Metrics   *TfMetric          `tfsdk:"metrics"`
 	Checks    map[string]TfCheck `tfsdk:"checks"`
+
+	Wait          types.Bool `tfsdk:"wait"`
+	WaitForChecks types.Bool `tfsdk:"wait_for_checks"`
 }
 
 func (d *flyMachineResourceData) updateGuestFromApiData(g *api.MachineGuest) {
@@ -153,8 +157,12 @@ func (d *flyMachineResourceData) updateFromApiCreateData(m api.Machine) (diags d
 	d.Name = types.String{Value: m.Name}
 	d.Id = types.String{Value: m.ID}
 	d.PrivateIP = types.String{Value: m.PrivateIP}
-	d.Metadata = utils.KVToTfMap(m.Config.Metadata, types.StringType)
-	d.Env = utils.KVToTfMap(m.Config.Env, types.StringType)
+	if m.Config == nil {
+		diags.AddWarning("invalid API data received", "machine.config is nil")
+		return
+	}
+	d.Metadata = utils.KVToTfMap(m.Config.Metadata, types.StringType, true)
+	d.Env = utils.KVToTfMap(m.Config.Env, types.StringType, true)
 	d.updateGuestFromApiData(m.Config.Guest)
 	if len(m.Config.Mounts) > 0 {
 		var mounts []TfMachineMount
@@ -179,6 +187,11 @@ func (d *flyMachineResourceData) updateFromApiData(m api.Machine) (diags diag.Di
 		return
 	}
 	d.Region = types.String{Value: m.Region}
+
+	if m.Config == nil {
+		diags.AddWarning("invalid API data received", "machine.config is nil")
+		return
+	}
 	d.Image = types.String{Value: m.Config.Image}
 	d.Cmd = m.Config.Init.Cmd
 	d.Entrypoint = m.Config.Init.Entrypoint
@@ -198,7 +211,7 @@ func (d *flyMachineResourceData) updateFromApiData(m api.Machine) (diags diag.Di
 				Entrypoint: p.EntrypointOverride,
 				Cmd:        p.CmdOverride,
 				User:       types.String{Value: p.UserOverride},
-				Env:        utils.KVToTfMap(p.ExtraEnv, types.StringType),
+				Env:        utils.KVToTfMap(p.ExtraEnv, types.StringType, true),
 			}
 		}
 	} else {
@@ -213,9 +226,13 @@ func (d *flyMachineResourceData) updateFromApiData(m api.Machine) (diags diag.Di
 	}
 
 	if len(m.Config.Checks) > 0 {
-		d.Checks = make(map[string]TfCheck)
-		for i, c := range m.Config.Checks {
-			d.Checks[i] = checkFromApi(c)
+		if d.Checks == nil {
+			d.Checks = make(map[string]TfCheck)
+		}
+		for k, c := range m.Config.Checks {
+			check, _ := d.Checks[k]
+			check.updateFromApi(c, &diags)
+			d.Checks[k] = check
 		}
 	} else {
 		d.Checks = nil
@@ -306,10 +323,18 @@ func (d *flyMachineResourceData) makeMachineRequest(ctx context.Context, diags *
 	conf.Checks = make(map[string]api.MachineCheck, len(d.Checks))
 	for k, c := range d.Checks {
 		ac := api.MachineCheck{
-			Type:     c.Type.Value,
-			Port:     uint16(c.Port.Value),
-			Interval: &api.Duration{Duration: c.Interval.Value},
-			Timeout:  &api.Duration{Duration: c.Timeout.Value},
+			Type: c.Type.Value,
+			Port: uint16(c.Port.Value),
+		}
+		if c.Interval.IsUnknown() || c.Interval.IsNull() {
+			ac.Interval = nil
+		} else {
+			ac.Interval = &api.Duration{Duration: *c.Interval.GetDuration()}
+		}
+		if c.Timeout.IsUnknown() || c.Timeout.IsNull() {
+			ac.Timeout = nil
+		} else {
+			ac.Timeout = &api.Duration{Duration: *c.Timeout.GetDuration()}
 		}
 		if !c.HttpPath.IsNull() && !c.HttpPath.IsUnknown() {
 			ac.HTTPPath = api.StringPointer(c.HttpPath.Value)
@@ -379,6 +404,7 @@ func (flyMachineResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnos
 				MarkdownDescription: "fly app",
 				Required:            true,
 				Type:                types.StringType,
+				PlanModifiers:       tfsdk.AttributePlanModifiers{resource.RequiresReplace()},
 			},
 			"private_ip": {
 				MarkdownDescription: "Private IP",
@@ -443,6 +469,10 @@ func (flyMachineResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnos
 				Optional:            true,
 				Computed:            true,
 				Type:                types.MapType{ElemType: types.StringType},
+				PlanModifiers: []tfsdk.AttributePlanModifier{
+					modifiers.Default(types.Map{ElemType: types.StringType, Elems: map[string]attr.Value{}}),
+					resource.UseStateForUnknown(),
+				},
 			},
 			"mounts": {
 				MarkdownDescription: "Volume mounts",
@@ -619,6 +649,20 @@ func (flyMachineResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnos
 				Type:          types.MapType{ElemType: types.StringType},
 				PlanModifiers: []tfsdk.AttributePlanModifier{modifiers.Default(types.Map{ElemType: types.StringType, Elems: map[string]attr.Value{}})},
 			},
+			"wait": {
+				Optional:      true,
+				Computed:      true,
+				Type:          types.BoolType,
+				Description:   "Wait for machine to start up",
+				PlanModifiers: []tfsdk.AttributePlanModifier{modifiers.Default(types.Bool{Value: true})},
+			},
+			"wait_for_checks": {
+				Optional:      true,
+				Computed:      true,
+				Type:          types.BoolType,
+				Description:   "Wait for machine's health checks to pass",
+				PlanModifiers: []tfsdk.AttributePlanModifier{modifiers.Default(types.Bool{Value: false})},
+			},
 		},
 	}, nil
 }
@@ -730,10 +774,18 @@ func (mr flyMachineResource) Create(ctx context.Context, req resource.CreateRequ
 
 	resp.Diagnostics.Append(data.updateFromApiCreateData(machine)...)
 
-	err = machineAPI.WaitForMachine(machine.ID, machine.InstanceID)
-	if err != nil {
-		//FIXME(?): For now we just assume that the orchestrator is in fact going to faithfully execute our request
-		tflog.Info(ctx, "Waiting errored")
+	if data.Wait.Equal(types.Bool{Value: true}) {
+		err = machineAPI.WaitForMachine(machine.ID, machine.InstanceID)
+		if err != nil {
+			//FIXME(?): For now we just assume that the orchestrator is in fact going to faithfully execute our request
+			tflog.Info(ctx, "Waiting errored")
+		}
+		if data.WaitForChecks.Equal(types.Bool{Value: true}) {
+			resp.Diagnostics.Append(mr.WaitForChecks(ctx, data, &resp.State)...)
+			if resp.Diagnostics.HasError() {
+				return
+			}
+		}
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -785,11 +837,19 @@ func (mr flyMachineResource) Update(ctx context.Context, req resource.UpdateRequ
 	}
 
 	resp.Diagnostics.Append(state.updateFromApiData(machine)...)
-
-	err = machineAPI.WaitForMachine(machine.ID, machine.InstanceID)
-	if err != nil {
-		tflog.Info(ctx, "Waiting errored")
+	if plan.Wait.Equal(types.Bool{Value: true}) {
+		err = machineAPI.WaitForMachine(machine.ID, machine.InstanceID)
+		if err != nil {
+			tflog.Info(ctx, "Waiting errored")
+		}
+		if plan.WaitForChecks.Equal(types.Bool{Value: true}) {
+			resp.Diagnostics.Append(mr.WaitForChecks(ctx, state, &resp.State)...)
+			if resp.Diagnostics.HasError() {
+				return
+			}
+		}
 	}
+	state.WaitForChecks = plan.WaitForChecks
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
@@ -812,4 +872,70 @@ func (mr flyMachineResource) Delete(ctx context.Context, req resource.DeleteRequ
 
 func (mr flyMachineResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}
+
+func (mr flyMachineResource) WaitForChecks(ctx context.Context, data flyMachineResourceData, state *tfsdk.State) (diags diag.Diagnostics) {
+	interval := 5 * time.Second
+	timeout := 5 * time.Minute
+	maxErrors := 3
+
+	machineApi := mr.machineApi(data.App.Value)
+
+	timeoutCh := time.After(timeout)
+
+	var machine api.Machine
+	var err error
+	var failingChecks []*api.MachineCheckStatus
+
+	numErrors := 0
+	for numErrors < maxErrors {
+		select {
+		case <-timeoutCh:
+			diags.AddError("timed out while waiting for checks to pass", fmt.Sprintf("failing checks: %v", failingChecks))
+			return
+		case <-ctx.Done():
+			diags.AddError("context cancelled", "")
+			return
+		case <-time.After(interval):
+		}
+
+		_, err = machineApi.ReadMachine(data.Id.Value, &machine)
+		if err != nil {
+			tflog.Error(ctx, fmt.Sprintf("ReadMachine failed while waiting for checks: %v", err.Error()))
+			numErrors++
+		} else {
+			data.updateFromApiData(machine)
+			diags.Append(state.Set(ctx, data)...)
+			if diags.HasError() {
+				return
+			}
+
+			failingChecks = make([]*api.MachineCheckStatus, 0)
+			for _, c := range machine.Checks {
+				if c.Status != "passing" {
+					failingChecks = append(failingChecks, c)
+					tflog.Trace(ctx, "waiting for health check to pass", map[string]interface{}{
+						"name":       c.Name,
+						"status":     c.Status,
+						"output":     c.Output,
+						"updated_at": c.UpdatedAt,
+					})
+				}
+			}
+			if len(failingChecks) == 0 {
+				return
+			}
+		}
+	}
+	diags.AddError("too many API errors while waiting for health checks", fmt.Sprintf("last error: %s", err.Error()))
+	return
+}
+
+func allChecksPassing(checks []*api.MachineCheckStatus) bool {
+	for _, c := range checks {
+		if c.Status != "passing" {
+			return false
+		}
+	}
+	return true
 }
