@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/superfly/flyctl/api"
+	"strings"
 )
 
 var _ resource.ResourceWithConfigure = &flyVolumeResource{}
@@ -128,7 +129,10 @@ func (vr flyVolumeResource) Read(ctx context.Context, req resource.ReadRequest, 
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 
 	v, err := vr.apiClient.GetVolume(ctx, data.Id.Value)
-	if err != nil {
+	if err != nil && strings.ToLower(err.Error()) == "could not find volume" {
+		resp.State.RemoveResource(ctx)
+		return
+	} else if err != nil {
 		resp.Diagnostics.AddError("Read: query failed", err.Error())
 	}
 	if v == nil {
