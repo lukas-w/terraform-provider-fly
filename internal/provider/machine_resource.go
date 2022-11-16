@@ -295,6 +295,12 @@ func (flyMachineResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnos
 							},
 						}),
 					},
+					"schedule": {
+						Optional:            true,
+						Type:                types.StringType,
+						Description:         "Schedule this machine. Options are \"hourly\", \"daily\", \"weekly\" and \"monthly\".",
+						MarkdownDescription: "Schedule this machine. Options are `\"hourly\"`, `\"daily\"`, `\"weekly\"` and `\"monthly\"`.",
+					},
 					"checks": {
 						Optional: true,
 						Attributes: tfsdk.MapNestedAttributes(map[string]tfsdk.Attribute{

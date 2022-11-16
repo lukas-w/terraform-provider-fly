@@ -93,6 +93,7 @@ type flyMachineConfigData struct {
 	Services  []TfService        `tfsdk:"services"`
 	Guest     types.Object       `tfsdk:"guest"`
 	Metrics   *TfMetric          `tfsdk:"metrics"`
+	Schedule  *string            `tfsdk:"schedule"`
 	Checks    map[string]TfCheck `tfsdk:"checks"`
 }
 
@@ -211,6 +212,10 @@ func (d *flyMachineConfigData) updateFromApiData(c api.MachineConfig) (diags dia
 		}
 	}
 
+	if c.Schedule != "" {
+		d.Schedule = &c.Schedule
+	}
+
 	if len(c.Checks) > 0 {
 		if d.Checks == nil {
 			d.Checks = make(map[string]TfCheck)
@@ -300,6 +305,10 @@ func (d *flyMachineConfigData) toApiConfig(ctx context.Context, diags *diag.Diag
 			Port: int(d.Metrics.Port.Value),
 			Path: d.Metrics.Path.Value,
 		}
+	}
+
+	if d.Schedule != nil {
+		conf.Schedule = *d.Schedule
 	}
 
 	conf.Checks = make(map[string]api.MachineCheck, len(d.Checks))
