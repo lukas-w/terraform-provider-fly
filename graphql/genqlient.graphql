@@ -325,3 +325,100 @@ query Organization($id: ID, $name: String, $slug: String) {
         }
     }
 }
+
+mutation CreateAccessToken($name: String!) {
+    createAccessToken(input: {name: $name}) {
+        accessToken {
+            id
+            name
+            token
+            createdAt
+        }
+    }
+}
+
+mutation DeleteAccessToken($id: ID!) {
+    deleteAccessToken(input: {accessTokenId: $id}) {
+        clientMutationId
+    }
+}
+
+query GetAccessTokens {
+    accessTokens {
+        nodes {
+            name
+            id
+            createdAt
+            token
+        }
+    }
+}
+
+fragment LimitedAccessToken on LimitedAccessToken {
+    id
+    name
+    token
+    tokenHeader
+    createdAt
+    expiresAt
+    organization {
+        name
+        id
+    }
+    user {
+        name
+        id
+    }
+}
+
+mutation CreateLimitedAccessToken($input: CreateLimitedAccessTokenInput!) {
+    createLimitedAccessToken(input: $input) {
+        limitedAccessToken {
+            id
+            name
+            token
+            tokenHeader
+            createdAt
+            expiresAt
+            organization {
+                id
+                name
+            }
+            user {
+                id
+                name
+            }
+        }
+    }
+}
+
+mutation DeleteLimitedAccessToken($id: ID!) {
+    deleteLimitedAccessToken(input: {token: $id}) {
+        clientMutationId
+    }
+}
+
+query LimitedAccessTokens {
+    apps {
+        nodes {
+            limitedAccessTokens {
+                nodes {
+                    id
+                    name
+                    token
+                    tokenHeader
+                    createdAt
+                    expiresAt
+                    organization {
+                        id
+                        name
+                    }
+                    user {
+                        id
+                        name
+                    }
+                }
+            }
+        }
+    }
+}
