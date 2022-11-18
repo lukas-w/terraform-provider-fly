@@ -134,7 +134,10 @@ func (c *TfCheck) updateFromApi(ac api.MachineCheck, _ *diag.Diagnostics) {
 	}
 }
 
-func (t TfMachineInit) toApi() api.MachineInit {
+func (t *TfMachineInit) toApi() api.MachineInit {
+	if t == nil {
+		return api.MachineInit{}
+	}
 	return api.MachineInit{
 		Exec:       t.Exec,
 		Entrypoint: t.Entrypoint,
@@ -180,9 +183,15 @@ func (d *flyMachineConfigData) updateFromApiData(c api.MachineConfig) (diags dia
 	diags.Append(d.updateFromApiCreateData(c)...)
 
 	d.Image = types.String{Value: c.Image}
-	d.Init.Cmd = c.Init.Cmd
-	d.Init.Entrypoint = c.Init.Entrypoint
-	d.Init.Exec = c.Init.Exec
+	if len(c.Init.Exec) > 0 || len(c.Init.Cmd) > 0 || len(c.Init.Entrypoint) > 0 {
+		d.Init = &TfMachineInit{
+			Cmd:        c.Init.Cmd,
+			Entrypoint: c.Init.Entrypoint,
+			Exec:       c.Init.Exec,
+		}
+	} else {
+		d.Init = nil
+	}
 
 	tfServices := ServicesToTfServices(c.Services)
 	if d.Services == nil && len(tfServices) == 0 {

@@ -89,6 +89,7 @@ func (flyMachineResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnos
 				Required: true,
 				Attributes: tfsdk.SingleNestedAttributes(map[string]tfsdk.Attribute{
 					"init": {
+						Optional: true,
 						Attributes: tfsdk.SingleNestedAttributes(map[string]tfsdk.Attribute{
 							"cmd": {
 								MarkdownDescription: "cmd",
@@ -110,7 +111,6 @@ func (flyMachineResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnos
 							},
 						}),
 					},
-
 					"image": {
 						MarkdownDescription: "docker image",
 						Required:            true,
