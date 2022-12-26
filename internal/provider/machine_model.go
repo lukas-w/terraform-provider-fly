@@ -380,5 +380,6 @@ func (d *flyMachineResourceData) updateFromApiData(m api.Machine) (diags diag.Di
 		diags.AddWarning("invalid API data received", "machine.config is nil")
 		return
 	}
+	d.Config.updateFromApiData(*m.Config)
 	return
 }
