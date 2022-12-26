@@ -462,6 +462,7 @@ func (mr flyMachineResource) Create(ctx context.Context, req resource.CreateRequ
 	tflog.Info(ctx, fmt.Sprintf("%+v", machine))
 
 	resp.Diagnostics.Append(data.updateFromApiCreateData(machine)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 
 	if data.Wait.Equal(types.Bool{Value: true}) {
 		err = machineAPI.WaitForMachine(machine.ID, machine.InstanceID)
