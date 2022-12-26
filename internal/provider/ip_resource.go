@@ -13,7 +13,12 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/vektah/gqlparser/v2/gqlerror"
+	"strings"
 )
+
+// Note that there are inconsistencies in GraphQL API's behaviour regarding the ip address type:
+// The AllocateIpAddress expects v4, v6 or private_v6, but all data returned contains either v4 or v6.
+// We can only detect a private v6 IP by checking for a `fdaa` prefix like flyctl does.
 
 var _ resource.ResourceWithConfigure = &flyIpResource{}
 var _ resource.ResourceWithImportState = &flyIpResource{}
@@ -32,6 +37,7 @@ type flyIpResourceData struct {
 	Region  types.String `tfsdk:"region"`
 	Address types.String `tfsdk:"address"`
 	Type    types.String `tfsdk:"type"`
+	Private types.Bool   `tfsdk:"private"`
 }
 
 func (ir flyIpResource) Metadata(_ context.Context, _ resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -43,12 +49,12 @@ func (flyIpResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics)
 		MarkdownDescription: "Fly ip resource",
 		Attributes: map[string]tfsdk.Attribute{
 			"address": {
-				MarkdownDescription: "ID of volume",
+				MarkdownDescription: "IP address",
 				Type:                types.StringType,
 				Computed:            true,
 			},
 			"app": {
-				MarkdownDescription: "Name of app to attach",
+				MarkdownDescription: "Name of app to attach to",
 				Required:            true,
 				Type:                types.StringType,
 				PlanModifiers:       []tfsdk.AttributePlanModifier{resource.RequiresReplace()},
@@ -60,10 +66,16 @@ func (flyIpResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics)
 				PlanModifiers:       []tfsdk.AttributePlanModifier{resource.RequiresReplace()},
 			},
 			"type": {
-				MarkdownDescription: "v4, v6 or private_v6",
+				MarkdownDescription: "v4 or v6",
 				Type:                types.StringType,
 				Required:            true,
 				PlanModifiers:       []tfsdk.AttributePlanModifier{resource.RequiresReplace()},
+			},
+			"private": {
+				Type:          types.BoolType,
+				Optional:      true,
+				Computed:      true,
+				PlanModifiers: []tfsdk.AttributePlanModifier{modifiers.Default(types.Bool{Value: false})},
 			},
 			"region": {
 				MarkdownDescription: "region",
@@ -86,7 +98,16 @@ func (ir flyIpResource) Create(ctx context.Context, req resource.CreateRequest, 
 
 	tflog.Info(ctx, fmt.Sprintf("%+v", data))
 
-	q, err := graphql.AllocateIpAddress(context.Background(), ir.gqlClient, data.Appid.Value, data.Region.Value, graphql.IPAddressType(data.Type.Value))
+	var ipType graphql.IPAddressType
+	if data.Type.Value == "v4" {
+		ipType = graphql.IPAddressTypeV4
+	} else if data.Private.Value {
+		ipType = graphql.IPAddressTypePrivateV6
+	} else {
+		ipType = graphql.IPAddressTypeV6
+	}
+
+	q, err := graphql.AllocateIpAddress(context.Background(), ir.gqlClient, data.Appid.Value, data.Region.Value, ipType)
 	tflog.Info(ctx, fmt.Sprintf("query res in create ip: %+v", q))
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to create ip addr", err.Error())
@@ -98,6 +119,7 @@ func (ir flyIpResource) Create(ctx context.Context, req resource.CreateRequest, 
 		Region:  types.String{Value: q.AllocateIpAddress.IpAddress.Region},
 		Type:    types.String{Value: string(q.AllocateIpAddress.IpAddress.Type)},
 		Address: types.String{Value: q.AllocateIpAddress.IpAddress.Address},
+		Private: types.Bool{Value: isPrivate(q.AllocateIpAddress.IpAddress.Address)},
 	}
 
 	tflog.Info(ctx, fmt.Sprintf("%+v", data))
@@ -115,16 +137,13 @@ func (ir flyIpResource) Read(ctx context.Context, req resource.ReadRequest, resp
 	diags := req.State.Get(ctx, &data)
 	resp.Diagnostics.Append(diags...)
 
-	addr := data.Address.Value
-	app := data.Appid.Value
-
-	query, err := graphql.IpAddressQuery(context.Background(), ir.gqlClient, app, addr)
-	tflog.Info(ctx, fmt.Sprintf("Query res: for %s %s %+v", app, addr, query))
+	query, err := graphql.IpAddressQuery(context.Background(), ir.gqlClient, data.Id.Value)
+	tflog.Info(ctx, fmt.Sprintf("Query res: for %s %+v", data.Id.Value, query))
 	var errList gqlerror.List
 	if errors.As(err, &errList) {
 		for _, err := range errList {
-			tflog.Info(ctx, "IN HERE")
-			if err.Message == "Could not resolve " {
+			if strings.Contains(strings.ToLower(err.Message), "could not find") {
+				resp.State.RemoveResource(ctx)
 				return
 			}
 			resp.Diagnostics.AddError(err.Message, err.Path.String())
@@ -134,11 +153,12 @@ func (ir flyIpResource) Read(ctx context.Context, req resource.ReadRequest, resp
 	}
 
 	data = flyIpResourceData{
-		Id:      types.String{Value: query.App.IpAddress.Id},
+		Id:      types.String{Value: query.IpAddress.Id},
 		Appid:   types.String{Value: data.Appid.Value},
-		Region:  types.String{Value: query.App.IpAddress.Region},
-		Type:    types.String{Value: string(query.App.IpAddress.Type)},
-		Address: types.String{Value: query.App.IpAddress.Address},
+		Region:  types.String{Value: query.IpAddress.Region},
+		Type:    types.String{Value: string(query.IpAddress.Type)},
+		Address: types.String{Value: query.IpAddress.Address},
+		Private: types.Bool{Value: isPrivate(query.IpAddress.Address)},
 	}
 
 	diags = resp.State.Set(ctx, &data)
@@ -175,4 +195,8 @@ func (ir flyIpResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 
 func (ir flyIpResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}
+
+func isPrivate(address string) bool {
+	return strings.HasPrefix(address, "fdaa")
 }

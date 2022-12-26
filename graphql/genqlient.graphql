@@ -154,14 +154,12 @@ mutation DeleteVolume($volume: ID!) {
     }
 }
 
-query IpAddressQuery($app: String, $addr: String!) {
-    app(name: $app) {
-        ipAddress(address: $addr) {
-            id
-            type
-            address
-            region
-        }
+query IpAddressQuery($id: ID!) {
+    ipAddress(id: $id) {
+        id
+        type
+        address
+        region
     }
 }
 
