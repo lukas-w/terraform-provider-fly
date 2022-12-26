@@ -22,6 +22,8 @@ import (
 var _ resource.ResourceWithConfigure = &flyAppResource{}
 var _ resource.ResourceWithImportState = &flyAppResource{}
 
+const ConsulUrlEnv = "FLY_CONSUL_URL"
+
 type appSecret struct {
 	Value     types.String `tfsdk:"value"`
 	Digest    types.String `tfsdk:"digest"`
@@ -43,16 +45,17 @@ type secretMap map[string]appSecret
 //type secretMap types.Map
 
 type flyAppResourceData struct {
-	Name                 types.String `tfsdk:"name"`
-	Org                  types.String `tfsdk:"org"`
-	OrgId                types.String `tfsdk:"orgid"`
-	AppUrl               types.String `tfsdk:"appurl"`
-	Id                   types.String `tfsdk:"id"`
-	Machines             types.Bool   `tfsdk:"machines"`
-	Secrets              secretMap    `tfsdk:"secrets"`
-	RoleId               types.String `tfsdk:"role_id"`
-	EnablePostgresConsul types.Bool   `tfsdk:"enable_postgres_consul"`
-	ConsulUrl            types.String `tfsdk:"consul_url"`
+	Name            types.String `tfsdk:"name"`
+	Org             types.String `tfsdk:"org"`
+	OrgId           types.String `tfsdk:"orgid"`
+	PreferredRegion types.String `tfsdk:"preferred_region"`
+	AppUrl          types.String `tfsdk:"appurl"`
+	Id              types.String `tfsdk:"id"`
+	Machines        types.Bool   `tfsdk:"machines"`
+	Secrets         secretMap    `tfsdk:"secrets"`
+	RoleId          types.String `tfsdk:"role_id"`
+	EnableConsul    types.Bool   `tfsdk:"enable_consul"`
+	ConsulUrl       types.String `tfsdk:"consul_url"`
 }
 
 func (d *flyAppResourceData) setSecret(name string, secret appSecret) {
@@ -84,11 +87,21 @@ func (d *flyAppResourceData) updateFromApi(a graphql.AppFragment) {
 	} else {
 		d.RoleId = types.String{Null: true}
 	}
+	d.PreferredRegion = types.String{Value: a.Autoscaling.PreferredRegion}
 }
 
 func (d *flyAppResourceData) updateSecretsFromApi(a graphql.AppFragment) {
 	for k := range d.Secrets {
 		d.updateSecretFromApi(k, a)
+	}
+	hasConsul := false
+	for _, s := range a.Secrets {
+		if s.Name == ConsulUrlEnv {
+			hasConsul = true
+		}
+	}
+	if !hasConsul {
+		d.EnableConsul = types.Bool{Value: false}
 	}
 }
 
@@ -132,7 +145,7 @@ func (r flyAppResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnosti
 	}
 
 	return tfsdk.Schema{
-		Version:             1,
+		Version:             2,
 		MarkdownDescription: "Fly app resource",
 		Attributes: map[string]tfsdk.Attribute{
 			"name": {
@@ -146,6 +159,12 @@ func (r flyAppResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnosti
 				Optional:            true,
 				MarkdownDescription: "Optional org slug to operate upon",
 				Type:                types.StringType,
+			},
+			"preferred_region": {
+				Optional:      true,
+				Computed:      true,
+				Type:          types.StringType,
+				PlanModifiers: []tfsdk.AttributePlanModifier{resource.RequiresReplace()},
 			},
 			"machines": {
 				Optional:            true,
@@ -204,7 +223,7 @@ func (r flyAppResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnosti
 					resource.RequiresReplace(),
 				},
 			},
-			"enable_postgres_consul": {
+			"enable_consul": {
 				Type:     types.BoolType,
 				Optional: true,
 				Computed: true,
@@ -212,13 +231,13 @@ func (r flyAppResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnosti
 					modifiers.Default(types.Bool{Value: false}),
 					resource.RequiresReplaceIf(
 						func(ctx context.Context, state, config attr.Value, path path.Path) (replace bool, diags diag.Diagnostics) {
-							var before, after bool
+							var before, after types.Bool
 							diags.Append(tfsdk.ValueAs(ctx, state, &before)...)
 							diags.Append(tfsdk.ValueAs(ctx, config, &after)...)
-							return before && !after, diags
+							return before.Equal(types.Bool{Value: true}) && after.Equal(types.Bool{Value: false}), diags
 						},
-						"postgres_consul cannot be disabled",
-						"postgres_consul cannot be disabled",
+						"consul cannot be disabled after it was enabled",
+						"consul cannot be disabled after it was enabled",
 					),
 				},
 			},
@@ -229,19 +248,6 @@ func (r flyAppResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnosti
 			},
 		},
 	}, nil
-}
-
-func (r flyAppResource) UpgradeState(ctx context.Context) map[int64]resource.StateUpgrader {
-	return map[int64]resource.StateUpgrader{
-		0: {
-			StateUpgrader: func(ctx context.Context, req resource.UpgradeStateRequest, resp *resource.UpgradeStateResponse) {
-				var data flyAppResourceData
-				resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
-				data.EnablePostgresConsul = types.Bool{Null: true}
-				resp.Diagnostics.Append(resp.State.Set(ctx, data)...)
-			},
-		},
-	}
 }
 
 func newAppResource() resource.Resource {
@@ -276,6 +282,9 @@ func (r flyAppResource) Create(ctx context.Context, req resource.CreateRequest, 
 		Runtime:        graphql.RuntimeTypeFirecracker,
 		AppRoleId:      data.RoleId.Value,
 	}
+	if !data.PreferredRegion.IsNull() {
+		createAppInput.PreferredRegion = data.PreferredRegion.Value
+	}
 	mresp, err := graphql.CreateAppMutation(context.Background(), r.gqlClient, createAppInput)
 	if err != nil {
 		resp.Diagnostics.AddError("Create app failed", err.Error())
@@ -288,8 +297,8 @@ func (r flyAppResource) Create(ctx context.Context, req resource.CreateRequest, 
 		return
 	}
 
-	if data.EnablePostgresConsul.Equal(types.Bool{Value: true}) {
-		resp.Diagnostics.Append(r.enablePostgresConsul(ctx, &data, &resp.State)...)
+	if data.EnableConsul.Equal(types.Bool{Value: true}) {
+		resp.Diagnostics.Append(r.enableConsul(ctx, &data, &resp.State)...)
 		if resp.Diagnostics.HasError() {
 			return
 		}
@@ -307,15 +316,30 @@ func (r flyAppResource) Create(ctx context.Context, req resource.CreateRequest, 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
-func (r flyAppResource) enablePostgresConsul(ctx context.Context, data *flyAppResourceData, state *tfsdk.State) (diags diag.Diagnostics) {
+func (r flyAppResource) enableConsul(ctx context.Context, data *flyAppResourceData, state *tfsdk.State) (diags diag.Diagnostics) {
 	consulPayload, err := r.apiClient.EnablePostgresConsul(ctx, data.Name.Value)
 	if err != nil {
 		diags.AddError("EnablePostgresConsul failed", err.Error())
-	} else {
-		data.EnablePostgresConsul = types.Bool{Value: true}
-		data.ConsulUrl = types.String{Value: consulPayload.ConsulURL}
-		diags.Append(state.Set(ctx, &data)...)
+		return
 	}
+
+	_, err = graphql.SetSecrets(ctx, r.gqlClient, graphql.SetSecretsInput{
+		AppId: data.Name.Value,
+		Secrets: []graphql.SecretInput{
+			{Key: ConsulUrlEnv, Value: consulPayload.ConsulURL},
+		},
+	})
+	var errList gqlerror.List
+	if errors.As(err, &errList) && len(errList) == 1 && strings.Contains(strings.ToLower(errList[0].Message), "no change detected") {
+		// ignore
+	} else if err != nil {
+		diags.AddError("Failed setting FLY_CONSUL_URL secret", err.Error())
+		return
+	}
+
+	data.EnableConsul = types.Bool{Value: true}
+	data.ConsulUrl = types.String{Value: consulPayload.ConsulURL}
+	diags.Append(state.Set(ctx, &data)...)
 	return
 }
 
@@ -385,13 +409,13 @@ func (r flyAppResource) Update(ctx context.Context, req resource.UpdateRequest, 
 
 	state.Machines = plan.Machines
 
-	if plan.EnablePostgresConsul.Equal(types.Bool{Value: true}) {
-		resp.Diagnostics.Append(r.enablePostgresConsul(ctx, &state, &resp.State)...)
+	if plan.EnableConsul.Equal(types.Bool{Value: true}) {
+		resp.Diagnostics.Append(r.enableConsul(ctx, &state, &resp.State)...)
 		if resp.Diagnostics.HasError() {
 			return
 		}
 	} else {
-		state.EnablePostgresConsul = plan.EnablePostgresConsul
+		state.EnableConsul = plan.EnableConsul
 		state.ConsulUrl = types.String{Null: true}
 	}
 
@@ -480,16 +504,6 @@ func (r flyAppResource) setSecrets(ctx context.Context, data flyAppResourceData,
 			Value: v.Value.Value,
 		}
 		i++
-	}
-
-	if data.EnablePostgresConsul.Equal(types.Bool{Value: true}) {
-		if data.ConsulUrl.IsUnknown() || data.ConsulUrl.IsNull() {
-			diags.AddError("failed enabling postgres_consul", "enable_postgres_consul is true but consul_url is still unknown. This is a bug")
-		}
-		inputs = append(inputs, graphql.SecretInput{
-			Key:   "FLY_CONSUL_URL",
-			Value: data.ConsulUrl.Value,
-		})
 	}
 
 	resp, err := graphql.SetSecrets(ctx, r.gqlClient, graphql.SetSecretsInput{

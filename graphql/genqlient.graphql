@@ -55,6 +55,9 @@ fragment AppFragment on App {
         id
         slug
     }
+    autoscaling {
+        preferredRegion
+    }
     secrets {
         name
         createdAt
