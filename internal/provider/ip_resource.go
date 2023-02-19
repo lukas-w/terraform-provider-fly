@@ -40,6 +40,18 @@ type flyIpResourceData struct {
 	Private types.Bool   `tfsdk:"private"`
 }
 
+func (r *flyIpResourceData) fromApi(f graphql.IPAddressFragment) {
+	r.Id = types.String{Value: f.Id}
+	r.Region = types.String{Value: f.Region}
+	r.Address = types.String{Value: f.Address}
+	if f.Type == graphql.IPAddressTypeV4 {
+		r.Type = types.String{Value: "v4"}
+	} else {
+		r.Type = types.String{Value: "v6"}
+	}
+	r.Private = types.Bool{Value: f.Type == graphql.IPAddressTypePrivateV6 || isPrivate(f.Address)}
+}
+
 func (ir flyIpResource) Metadata(_ context.Context, _ resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = "fly_ip"
 }
@@ -113,14 +125,8 @@ func (ir flyIpResource) Create(ctx context.Context, req resource.CreateRequest, 
 		resp.Diagnostics.AddError("Failed to create ip addr", err.Error())
 	}
 
-	data = flyIpResourceData{
-		Id:      types.String{Value: q.AllocateIpAddress.IpAddress.Id},
-		Appid:   types.String{Value: data.Appid.Value},
-		Region:  types.String{Value: q.AllocateIpAddress.IpAddress.Region},
-		Type:    types.String{Value: string(q.AllocateIpAddress.IpAddress.Type)},
-		Address: types.String{Value: q.AllocateIpAddress.IpAddress.Address},
-		Private: types.Bool{Value: isPrivate(q.AllocateIpAddress.IpAddress.Address)},
-	}
+	data.fromApi(q.AllocateIpAddress.IpAddress)
+	data.Appid = types.String{Value: data.Appid.Value}
 
 	tflog.Info(ctx, fmt.Sprintf("%+v", data))
 
@@ -152,14 +158,7 @@ func (ir flyIpResource) Read(ctx context.Context, req resource.ReadRequest, resp
 		resp.Diagnostics.AddError("Read: query failed", err.Error())
 	}
 
-	data = flyIpResourceData{
-		Id:      types.String{Value: query.IpAddress.Id},
-		Appid:   types.String{Value: data.Appid.Value},
-		Region:  types.String{Value: query.IpAddress.Region},
-		Type:    types.String{Value: string(query.IpAddress.Type)},
-		Address: types.String{Value: query.IpAddress.Address},
-		Private: types.Bool{Value: isPrivate(query.IpAddress.Address)},
-	}
+	data.fromApi(query.IpAddress)
 
 	diags = resp.State.Set(ctx, &data)
 	resp.Diagnostics.Append(diags...)

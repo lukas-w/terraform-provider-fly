@@ -154,12 +154,17 @@ mutation DeleteVolume($volume: ID!) {
     }
 }
 
+fragment IPAddressFragment on IPAddress {
+    id
+    type
+    address
+    region
+}
+
 query IpAddressQuery($id: ID!) {
+    # @genqlient(flatten: true)
     ipAddress(id: $id) {
-        id
-        type
-        address
-        region
+        ...IPAddressFragment
     }
 }
 
@@ -169,11 +174,9 @@ mutation AllocateIpAddress($app: ID!, $region: String, $addrType: IPAddressType!
         region: $region,
         type: $addrType
     }) {
+        # @genqlient(flatten: true)
         ipAddress {
-            id
-            type
-            address
-            region
+            ...IPAddressFragment
         }
     }
 }
