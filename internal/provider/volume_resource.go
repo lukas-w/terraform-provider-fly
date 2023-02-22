@@ -58,12 +58,12 @@ func (vr flyVolumeResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 				Computed:            true,
 			},
 			"app": schema.StringAttribute{
-				MarkdownDescription: "Name of app to attach",
+				MarkdownDescription: "Name of app to attach to",
 				Required:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			"size": schema.Int64Attribute{
-				MarkdownDescription: "Size of volume in gb",
+				MarkdownDescription: "Size of volume in GB",
 				Required:            true,
 				PlanModifiers: []planmodifier.Int64{
 					int64planmodifier.RequiresReplaceIf(func(ctx context.Context, req planmodifier.Int64Request, resp *int64planmodifier.RequiresReplaceIfFuncResponse) {

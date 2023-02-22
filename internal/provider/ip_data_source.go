@@ -32,11 +32,11 @@ func (i ipDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp
 		MarkdownDescription: "Fly ip data source",
 		Attributes: map[string]schema.Attribute{
 			"address": schema.StringAttribute{
-				MarkdownDescription: "ID of volume",
+				MarkdownDescription: "IP address",
 				Computed:            true,
 			},
 			"app": schema.StringAttribute{
-				MarkdownDescription: "Name of app to attach",
+				MarkdownDescription: "Name of app to attach to",
 				Required:            true,
 			},
 			"id": schema.StringAttribute{

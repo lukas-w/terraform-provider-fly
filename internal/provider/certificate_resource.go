@@ -46,7 +46,7 @@ func (flyCertResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 		MarkdownDescription: "Fly certificate resource",
 		Attributes: map[string]schema.Attribute{
 			"app": schema.StringAttribute{
-				MarkdownDescription: "Name of app to attach",
+				MarkdownDescription: "Name of app to attach to",
 				Required:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
@@ -56,7 +56,7 @@ func (flyCertResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			"id": schema.StringAttribute{
-				MarkdownDescription: "ID of address",
+				MarkdownDescription: "ID of certificate",
 				Computed:            true,
 			},
 			"dns_validation_instructions": schema.StringAttribute{

@@ -32,11 +32,11 @@ func (d certDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, re
 		MarkdownDescription: "Fly certificate data source",
 		Attributes: map[string]schema.Attribute{
 			"app": schema.StringAttribute{
-				MarkdownDescription: "Name of app that is attacjed",
+				MarkdownDescription: "Name of app attached to",
 				Required:            true,
 			},
 			"id": schema.StringAttribute{
-				MarkdownDescription: "ID of address",
+				MarkdownDescription: "ID of certificate",
 				Computed:            true,
 			},
 			"dnsvalidationinstructions": schema.StringAttribute{

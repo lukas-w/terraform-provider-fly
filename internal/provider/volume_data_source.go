@@ -34,11 +34,11 @@ func (v volumeDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, 
 				Optional:            true,
 			},
 			"app": schema.StringAttribute{
-				MarkdownDescription: "Name of app to attach",
+				MarkdownDescription: "Name of app attached to",
 				Required:            true,
 			},
 			"size": schema.Int64Attribute{
-				MarkdownDescription: "Size of volume in gb",
+				MarkdownDescription: "Size of volume in GB",
 				Required:            true,
 			},
 			"name": schema.StringAttribute{
