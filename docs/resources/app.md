@@ -50,3 +50,11 @@ Read-Only:
 
 - `created_at` (String)
 - `digest` (String)
+
+## Import
+
+Import is supported using the following syntax:
+
+```shell
+terraform import fly_app.exampleApp <app_id>
+```

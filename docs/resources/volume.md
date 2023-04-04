@@ -38,3 +38,11 @@ resource "fly_volume" "exampleApp" {
 ### Read-Only
 
 - `id` (String) ID of volume
+
+## Import
+
+Import is supported using the following syntax:
+
+```shell
+terraform import fly_volume.exampleApp <app_id>,<volume_internal_id>
+```

@@ -202,7 +202,6 @@ Optional:
 - `force_https` (Boolean)
 - `handlers` (List of String) How the edge should process requests
 
-
 <a id="nestedatt--config--services--concurrency"></a>
 ### Nested Schema for `config.services.concurrency`
 
@@ -211,3 +210,11 @@ Required:
 - `hard_limit` (Number)
 - `soft_limit` (Number)
 - `type` (String) Specifies what metric to use to measure load for the application. Either "connections" or "requests"
+
+## Import
+
+Import is supported using the following syntax:
+
+```shell
+terraform import fly_machine.exampleMachine <app_id>,<machine_id>
+```

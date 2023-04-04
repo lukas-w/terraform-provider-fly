@@ -24,6 +24,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/superfly/fly-go"
 	"github.com/superfly/fly-go/flaps"
+	"strings"
 	"time"
 )
 
@@ -649,7 +650,18 @@ func stopMachine(ctx context.Context, client flaps.Client, id string, nonce stri
 }
 
 func (mr flyMachineResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+	idParts := strings.Split(req.ID, ",")
+
+	if len(idParts) != 2 || idParts[0] == "" || idParts[1] == "" {
+		resp.Diagnostics.AddError(
+			"Unexpected Import Identifier",
+			fmt.Sprintf("Expected import identifier with format: app_id,machine_id. Got: %q", req.ID),
+		)
+		return
+	}
+
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("app"), idParts[0])...)
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), idParts[1])...)
 }
 
 func (mr flyMachineResource) WaitForChecks(ctx context.Context, data flyMachineResourceData, state *tfsdk.State) (diags diag.Diagnostics) {
