@@ -365,33 +365,12 @@ fragment LimitedAccessToken on LimitedAccessToken {
     tokenHeader
     createdAt
     expiresAt
-    organization {
-        name
-        id
-    }
-    user {
-        name
-        id
-    }
 }
 
 mutation CreateLimitedAccessToken($input: CreateLimitedAccessTokenInput!) {
     createLimitedAccessToken(input: $input) {
         limitedAccessToken {
-            id
-            name
-            token
-            tokenHeader
-            createdAt
-            expiresAt
-            organization {
-                id
-                name
-            }
-            user {
-                id
-                name
-            }
+            ...LimitedAccessToken
         }
     }
 }
@@ -402,26 +381,11 @@ mutation DeleteLimitedAccessToken($id: ID!) {
     }
 }
 
-query LimitedAccessTokens {
-    apps {
-        nodes {
-            limitedAccessTokens {
-                nodes {
-                    id
-                    name
-                    token
-                    tokenHeader
-                    createdAt
-                    expiresAt
-                    organization {
-                        id
-                        name
-                    }
-                    user {
-                        id
-                        name
-                    }
-                }
+query LimitedAccessTokens($app: String!) {
+    app(id: $app) {
+        limitedAccessTokens {
+            nodes {
+                ...LimitedAccessToken
             }
         }
     }

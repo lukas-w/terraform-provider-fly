@@ -171,6 +171,7 @@ func (p *provider) Configure(ctx context.Context, req tfsdkprovider.ConfigureReq
 func (p *provider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		newAppResource,
+		newDeployTokenResource,
 		newFlySecretResource,
 		newFlyVolumeResource,
 		newFlyIpResource,

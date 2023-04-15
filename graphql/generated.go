@@ -180,7 +180,8 @@ type AppFragment struct {
 	// The unique application name
 	Name string `json:"name"`
 	// Organization that owns this app
-	Organization AppFragmentOrganization `json:"organization"`
+	Organization AppFragmentOrganization                 `json:"organization"`
+	Autoscaling  AppFragmentAutoscalingAutoscalingConfig `json:"autoscaling"`
 	// Secrets set on the application
 	Secrets []AppFragmentSecretsSecret `json:"secrets"`
 	AppUrl  string                     `json:"appUrl"`
@@ -197,6 +198,9 @@ func (v *AppFragment) GetName() string { return v.Name }
 
 // GetOrganization returns AppFragment.Organization, and is useful for accessing the field via an interface.
 func (v *AppFragment) GetOrganization() AppFragmentOrganization { return v.Organization }
+
+// GetAutoscaling returns AppFragment.Autoscaling, and is useful for accessing the field via an interface.
+func (v *AppFragment) GetAutoscaling() AppFragmentAutoscalingAutoscalingConfig { return v.Autoscaling }
 
 // GetSecrets returns AppFragment.Secrets, and is useful for accessing the field via an interface.
 func (v *AppFragment) GetSecrets() []AppFragmentSecretsSecret { return v.Secrets }
@@ -250,6 +254,8 @@ type __premarshalAppFragment struct {
 
 	Organization AppFragmentOrganization `json:"organization"`
 
+	Autoscaling AppFragmentAutoscalingAutoscalingConfig `json:"autoscaling"`
+
 	Secrets []AppFragmentSecretsSecret `json:"secrets"`
 
 	AppUrl string `json:"appUrl"`
@@ -273,6 +279,7 @@ func (v *AppFragment) __premarshalJSON() (*__premarshalAppFragment, error) {
 	retval.Id = v.Id
 	retval.Name = v.Name
 	retval.Organization = v.Organization
+	retval.Autoscaling = v.Autoscaling
 	retval.Secrets = v.Secrets
 	retval.AppUrl = v.AppUrl
 	retval.PlatformVersion = v.PlatformVersion
@@ -289,6 +296,16 @@ func (v *AppFragment) __premarshalJSON() (*__premarshalAppFragment, error) {
 		}
 	}
 	return &retval, nil
+}
+
+// AppFragmentAutoscalingAutoscalingConfig includes the requested fields of the GraphQL type AutoscalingConfig.
+type AppFragmentAutoscalingAutoscalingConfig struct {
+	PreferredRegion string `json:"preferredRegion"`
+}
+
+// GetPreferredRegion returns AppFragmentAutoscalingAutoscalingConfig.PreferredRegion, and is useful for accessing the field via an interface.
+func (v *AppFragmentAutoscalingAutoscalingConfig) GetPreferredRegion() string {
+	return v.PreferredRegion
 }
 
 // AppFragmentOrganization includes the requested fields of the GraphQL type Organization.
@@ -633,88 +650,96 @@ func (v *CreateLimitedAccessTokenCreateLimitedAccessTokenCreateLimitedAccessToke
 
 // CreateLimitedAccessTokenCreateLimitedAccessTokenCreateLimitedAccessTokenPayloadLimitedAccessToken includes the requested fields of the GraphQL type LimitedAccessToken.
 type CreateLimitedAccessTokenCreateLimitedAccessTokenCreateLimitedAccessTokenPayloadLimitedAccessToken struct {
-	Id           string                                                                                                        `json:"id"`
-	Name         string                                                                                                        `json:"name"`
-	Token        string                                                                                                        `json:"token"`
-	TokenHeader  string                                                                                                        `json:"tokenHeader"`
-	CreatedAt    time.Time                                                                                                     `json:"createdAt"`
-	ExpiresAt    time.Time                                                                                                     `json:"expiresAt"`
-	Organization CreateLimitedAccessTokenCreateLimitedAccessTokenCreateLimitedAccessTokenPayloadLimitedAccessTokenOrganization `json:"organization"`
-	User         CreateLimitedAccessTokenCreateLimitedAccessTokenCreateLimitedAccessTokenPayloadLimitedAccessTokenUser         `json:"user"`
+	LimitedAccessToken `json:"-"`
 }
 
 // GetId returns CreateLimitedAccessTokenCreateLimitedAccessTokenCreateLimitedAccessTokenPayloadLimitedAccessToken.Id, and is useful for accessing the field via an interface.
 func (v *CreateLimitedAccessTokenCreateLimitedAccessTokenCreateLimitedAccessTokenPayloadLimitedAccessToken) GetId() string {
-	return v.Id
+	return v.LimitedAccessToken.Id
 }
 
 // GetName returns CreateLimitedAccessTokenCreateLimitedAccessTokenCreateLimitedAccessTokenPayloadLimitedAccessToken.Name, and is useful for accessing the field via an interface.
 func (v *CreateLimitedAccessTokenCreateLimitedAccessTokenCreateLimitedAccessTokenPayloadLimitedAccessToken) GetName() string {
-	return v.Name
+	return v.LimitedAccessToken.Name
 }
 
 // GetToken returns CreateLimitedAccessTokenCreateLimitedAccessTokenCreateLimitedAccessTokenPayloadLimitedAccessToken.Token, and is useful for accessing the field via an interface.
 func (v *CreateLimitedAccessTokenCreateLimitedAccessTokenCreateLimitedAccessTokenPayloadLimitedAccessToken) GetToken() string {
-	return v.Token
+	return v.LimitedAccessToken.Token
 }
 
 // GetTokenHeader returns CreateLimitedAccessTokenCreateLimitedAccessTokenCreateLimitedAccessTokenPayloadLimitedAccessToken.TokenHeader, and is useful for accessing the field via an interface.
 func (v *CreateLimitedAccessTokenCreateLimitedAccessTokenCreateLimitedAccessTokenPayloadLimitedAccessToken) GetTokenHeader() string {
-	return v.TokenHeader
+	return v.LimitedAccessToken.TokenHeader
 }
 
 // GetCreatedAt returns CreateLimitedAccessTokenCreateLimitedAccessTokenCreateLimitedAccessTokenPayloadLimitedAccessToken.CreatedAt, and is useful for accessing the field via an interface.
 func (v *CreateLimitedAccessTokenCreateLimitedAccessTokenCreateLimitedAccessTokenPayloadLimitedAccessToken) GetCreatedAt() time.Time {
-	return v.CreatedAt
+	return v.LimitedAccessToken.CreatedAt
 }
 
 // GetExpiresAt returns CreateLimitedAccessTokenCreateLimitedAccessTokenCreateLimitedAccessTokenPayloadLimitedAccessToken.ExpiresAt, and is useful for accessing the field via an interface.
 func (v *CreateLimitedAccessTokenCreateLimitedAccessTokenCreateLimitedAccessTokenPayloadLimitedAccessToken) GetExpiresAt() time.Time {
-	return v.ExpiresAt
+	return v.LimitedAccessToken.ExpiresAt
 }
 
-// GetOrganization returns CreateLimitedAccessTokenCreateLimitedAccessTokenCreateLimitedAccessTokenPayloadLimitedAccessToken.Organization, and is useful for accessing the field via an interface.
-func (v *CreateLimitedAccessTokenCreateLimitedAccessTokenCreateLimitedAccessTokenPayloadLimitedAccessToken) GetOrganization() CreateLimitedAccessTokenCreateLimitedAccessTokenCreateLimitedAccessTokenPayloadLimitedAccessTokenOrganization {
-	return v.Organization
+func (v *CreateLimitedAccessTokenCreateLimitedAccessTokenCreateLimitedAccessTokenPayloadLimitedAccessToken) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*CreateLimitedAccessTokenCreateLimitedAccessTokenCreateLimitedAccessTokenPayloadLimitedAccessToken
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.CreateLimitedAccessTokenCreateLimitedAccessTokenCreateLimitedAccessTokenPayloadLimitedAccessToken = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.LimitedAccessToken)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-// GetUser returns CreateLimitedAccessTokenCreateLimitedAccessTokenCreateLimitedAccessTokenPayloadLimitedAccessToken.User, and is useful for accessing the field via an interface.
-func (v *CreateLimitedAccessTokenCreateLimitedAccessTokenCreateLimitedAccessTokenPayloadLimitedAccessToken) GetUser() CreateLimitedAccessTokenCreateLimitedAccessTokenCreateLimitedAccessTokenPayloadLimitedAccessTokenUser {
-	return v.User
-}
-
-// CreateLimitedAccessTokenCreateLimitedAccessTokenCreateLimitedAccessTokenPayloadLimitedAccessTokenOrganization includes the requested fields of the GraphQL type Organization.
-type CreateLimitedAccessTokenCreateLimitedAccessTokenCreateLimitedAccessTokenPayloadLimitedAccessTokenOrganization struct {
+type __premarshalCreateLimitedAccessTokenCreateLimitedAccessTokenCreateLimitedAccessTokenPayloadLimitedAccessToken struct {
 	Id string `json:"id"`
-	// Organization name
+
 	Name string `json:"name"`
+
+	Token string `json:"token"`
+
+	TokenHeader string `json:"tokenHeader"`
+
+	CreatedAt time.Time `json:"createdAt"`
+
+	ExpiresAt time.Time `json:"expiresAt"`
 }
 
-// GetId returns CreateLimitedAccessTokenCreateLimitedAccessTokenCreateLimitedAccessTokenPayloadLimitedAccessTokenOrganization.Id, and is useful for accessing the field via an interface.
-func (v *CreateLimitedAccessTokenCreateLimitedAccessTokenCreateLimitedAccessTokenPayloadLimitedAccessTokenOrganization) GetId() string {
-	return v.Id
+func (v *CreateLimitedAccessTokenCreateLimitedAccessTokenCreateLimitedAccessTokenPayloadLimitedAccessToken) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
 }
 
-// GetName returns CreateLimitedAccessTokenCreateLimitedAccessTokenCreateLimitedAccessTokenPayloadLimitedAccessTokenOrganization.Name, and is useful for accessing the field via an interface.
-func (v *CreateLimitedAccessTokenCreateLimitedAccessTokenCreateLimitedAccessTokenPayloadLimitedAccessTokenOrganization) GetName() string {
-	return v.Name
-}
+func (v *CreateLimitedAccessTokenCreateLimitedAccessTokenCreateLimitedAccessTokenPayloadLimitedAccessToken) __premarshalJSON() (*__premarshalCreateLimitedAccessTokenCreateLimitedAccessTokenCreateLimitedAccessTokenPayloadLimitedAccessToken, error) {
+	var retval __premarshalCreateLimitedAccessTokenCreateLimitedAccessTokenCreateLimitedAccessTokenPayloadLimitedAccessToken
 
-// CreateLimitedAccessTokenCreateLimitedAccessTokenCreateLimitedAccessTokenPayloadLimitedAccessTokenUser includes the requested fields of the GraphQL type User.
-type CreateLimitedAccessTokenCreateLimitedAccessTokenCreateLimitedAccessTokenPayloadLimitedAccessTokenUser struct {
-	Id string `json:"id"`
-	// Display / full name for user (private)
-	Name string `json:"name"`
-}
-
-// GetId returns CreateLimitedAccessTokenCreateLimitedAccessTokenCreateLimitedAccessTokenPayloadLimitedAccessTokenUser.Id, and is useful for accessing the field via an interface.
-func (v *CreateLimitedAccessTokenCreateLimitedAccessTokenCreateLimitedAccessTokenPayloadLimitedAccessTokenUser) GetId() string {
-	return v.Id
-}
-
-// GetName returns CreateLimitedAccessTokenCreateLimitedAccessTokenCreateLimitedAccessTokenPayloadLimitedAccessTokenUser.Name, and is useful for accessing the field via an interface.
-func (v *CreateLimitedAccessTokenCreateLimitedAccessTokenCreateLimitedAccessTokenPayloadLimitedAccessTokenUser) GetName() string {
-	return v.Name
+	retval.Id = v.LimitedAccessToken.Id
+	retval.Name = v.LimitedAccessToken.Name
+	retval.Token = v.LimitedAccessToken.Token
+	retval.TokenHeader = v.LimitedAccessToken.TokenHeader
+	retval.CreatedAt = v.LimitedAccessToken.CreatedAt
+	retval.ExpiresAt = v.LimitedAccessToken.ExpiresAt
+	return &retval, nil
 }
 
 // Autogenerated input type of CreateLimitedAccessToken
@@ -964,6 +989,30 @@ type DeleteCertificateResponse struct {
 // GetDeleteCertificate returns DeleteCertificateResponse.DeleteCertificate, and is useful for accessing the field via an interface.
 func (v *DeleteCertificateResponse) GetDeleteCertificate() DeleteCertificateDeleteCertificateDeleteCertificatePayload {
 	return v.DeleteCertificate
+}
+
+// DeleteLimitedAccessTokenDeleteLimitedAccessTokenDeleteLimitedAccessTokenPayload includes the requested fields of the GraphQL type DeleteLimitedAccessTokenPayload.
+// The GraphQL type's documentation follows.
+//
+// Autogenerated return type of DeleteLimitedAccessToken
+type DeleteLimitedAccessTokenDeleteLimitedAccessTokenDeleteLimitedAccessTokenPayload struct {
+	// A unique identifier for the client performing the mutation.
+	ClientMutationId string `json:"clientMutationId"`
+}
+
+// GetClientMutationId returns DeleteLimitedAccessTokenDeleteLimitedAccessTokenDeleteLimitedAccessTokenPayload.ClientMutationId, and is useful for accessing the field via an interface.
+func (v *DeleteLimitedAccessTokenDeleteLimitedAccessTokenDeleteLimitedAccessTokenPayload) GetClientMutationId() string {
+	return v.ClientMutationId
+}
+
+// DeleteLimitedAccessTokenResponse is returned by DeleteLimitedAccessToken on success.
+type DeleteLimitedAccessTokenResponse struct {
+	DeleteLimitedAccessToken DeleteLimitedAccessTokenDeleteLimitedAccessTokenDeleteLimitedAccessTokenPayload `json:"deleteLimitedAccessToken"`
+}
+
+// GetDeleteLimitedAccessToken returns DeleteLimitedAccessTokenResponse.DeleteLimitedAccessToken, and is useful for accessing the field via an interface.
+func (v *DeleteLimitedAccessTokenResponse) GetDeleteLimitedAccessToken() DeleteLimitedAccessTokenDeleteLimitedAccessTokenDeleteLimitedAccessTokenPayload {
+	return v.DeleteLimitedAccessToken
 }
 
 // DeleteVolumeDeleteVolumeDeleteVolumePayload includes the requested fields of the GraphQL type DeleteVolumePayload.
@@ -1619,34 +1668,160 @@ type IpAddressQueryResponse struct {
 // GetIpAddress returns IpAddressQueryResponse.IpAddress, and is useful for accessing the field via an interface.
 func (v *IpAddressQueryResponse) GetIpAddress() IPAddressFragment { return v.IpAddress }
 
-// IpAddressQueryAppIpAddressIPAddress includes the requested fields of the GraphQL type IPAddress.
-type IpAddressQueryAppIpAddressIPAddress struct {
-	Id      string        `json:"id"`
-	Type    IPAddressType `json:"type"`
-	Address string        `json:"address"`
-	Region  string        `json:"region"`
+// LimitedAccessToken includes the GraphQL fields of LimitedAccessToken requested by the fragment LimitedAccessToken.
+type LimitedAccessToken struct {
+	Id          string    `json:"id"`
+	Name        string    `json:"name"`
+	Token       string    `json:"token"`
+	TokenHeader string    `json:"tokenHeader"`
+	CreatedAt   time.Time `json:"createdAt"`
+	ExpiresAt   time.Time `json:"expiresAt"`
 }
 
-// GetId returns IpAddressQueryAppIpAddressIPAddress.Id, and is useful for accessing the field via an interface.
-func (v *IpAddressQueryAppIpAddressIPAddress) GetId() string { return v.Id }
+// GetId returns LimitedAccessToken.Id, and is useful for accessing the field via an interface.
+func (v *LimitedAccessToken) GetId() string { return v.Id }
 
-// GetType returns IpAddressQueryAppIpAddressIPAddress.Type, and is useful for accessing the field via an interface.
-func (v *IpAddressQueryAppIpAddressIPAddress) GetType() IPAddressType { return v.Type }
+// GetName returns LimitedAccessToken.Name, and is useful for accessing the field via an interface.
+func (v *LimitedAccessToken) GetName() string { return v.Name }
 
-// GetAddress returns IpAddressQueryAppIpAddressIPAddress.Address, and is useful for accessing the field via an interface.
-func (v *IpAddressQueryAppIpAddressIPAddress) GetAddress() string { return v.Address }
+// GetToken returns LimitedAccessToken.Token, and is useful for accessing the field via an interface.
+func (v *LimitedAccessToken) GetToken() string { return v.Token }
 
-// GetRegion returns IpAddressQueryAppIpAddressIPAddress.Region, and is useful for accessing the field via an interface.
-func (v *IpAddressQueryAppIpAddressIPAddress) GetRegion() string { return v.Region }
+// GetTokenHeader returns LimitedAccessToken.TokenHeader, and is useful for accessing the field via an interface.
+func (v *LimitedAccessToken) GetTokenHeader() string { return v.TokenHeader }
 
-// IpAddressQueryResponse is returned by IpAddressQuery on success.
-type IpAddressQueryResponse struct {
+// GetCreatedAt returns LimitedAccessToken.CreatedAt, and is useful for accessing the field via an interface.
+func (v *LimitedAccessToken) GetCreatedAt() time.Time { return v.CreatedAt }
+
+// GetExpiresAt returns LimitedAccessToken.ExpiresAt, and is useful for accessing the field via an interface.
+func (v *LimitedAccessToken) GetExpiresAt() time.Time { return v.ExpiresAt }
+
+// LimitedAccessTokensApp includes the requested fields of the GraphQL type App.
+type LimitedAccessTokensApp struct {
+	LimitedAccessTokens LimitedAccessTokensAppLimitedAccessTokensLimitedAccessTokenConnection `json:"limitedAccessTokens"`
+}
+
+// GetLimitedAccessTokens returns LimitedAccessTokensApp.LimitedAccessTokens, and is useful for accessing the field via an interface.
+func (v *LimitedAccessTokensApp) GetLimitedAccessTokens() LimitedAccessTokensAppLimitedAccessTokensLimitedAccessTokenConnection {
+	return v.LimitedAccessTokens
+}
+
+// LimitedAccessTokensAppLimitedAccessTokensLimitedAccessTokenConnection includes the requested fields of the GraphQL type LimitedAccessTokenConnection.
+// The GraphQL type's documentation follows.
+//
+// The connection type for LimitedAccessToken.
+type LimitedAccessTokensAppLimitedAccessTokensLimitedAccessTokenConnection struct {
+	// A list of nodes.
+	Nodes []LimitedAccessTokensAppLimitedAccessTokensLimitedAccessTokenConnectionNodesLimitedAccessToken `json:"nodes"`
+}
+
+// GetNodes returns LimitedAccessTokensAppLimitedAccessTokensLimitedAccessTokenConnection.Nodes, and is useful for accessing the field via an interface.
+func (v *LimitedAccessTokensAppLimitedAccessTokensLimitedAccessTokenConnection) GetNodes() []LimitedAccessTokensAppLimitedAccessTokensLimitedAccessTokenConnectionNodesLimitedAccessToken {
+	return v.Nodes
+}
+
+// LimitedAccessTokensAppLimitedAccessTokensLimitedAccessTokenConnectionNodesLimitedAccessToken includes the requested fields of the GraphQL type LimitedAccessToken.
+type LimitedAccessTokensAppLimitedAccessTokensLimitedAccessTokenConnectionNodesLimitedAccessToken struct {
+	LimitedAccessToken `json:"-"`
+}
+
+// GetId returns LimitedAccessTokensAppLimitedAccessTokensLimitedAccessTokenConnectionNodesLimitedAccessToken.Id, and is useful for accessing the field via an interface.
+func (v *LimitedAccessTokensAppLimitedAccessTokensLimitedAccessTokenConnectionNodesLimitedAccessToken) GetId() string {
+	return v.LimitedAccessToken.Id
+}
+
+// GetName returns LimitedAccessTokensAppLimitedAccessTokensLimitedAccessTokenConnectionNodesLimitedAccessToken.Name, and is useful for accessing the field via an interface.
+func (v *LimitedAccessTokensAppLimitedAccessTokensLimitedAccessTokenConnectionNodesLimitedAccessToken) GetName() string {
+	return v.LimitedAccessToken.Name
+}
+
+// GetToken returns LimitedAccessTokensAppLimitedAccessTokensLimitedAccessTokenConnectionNodesLimitedAccessToken.Token, and is useful for accessing the field via an interface.
+func (v *LimitedAccessTokensAppLimitedAccessTokensLimitedAccessTokenConnectionNodesLimitedAccessToken) GetToken() string {
+	return v.LimitedAccessToken.Token
+}
+
+// GetTokenHeader returns LimitedAccessTokensAppLimitedAccessTokensLimitedAccessTokenConnectionNodesLimitedAccessToken.TokenHeader, and is useful for accessing the field via an interface.
+func (v *LimitedAccessTokensAppLimitedAccessTokensLimitedAccessTokenConnectionNodesLimitedAccessToken) GetTokenHeader() string {
+	return v.LimitedAccessToken.TokenHeader
+}
+
+// GetCreatedAt returns LimitedAccessTokensAppLimitedAccessTokensLimitedAccessTokenConnectionNodesLimitedAccessToken.CreatedAt, and is useful for accessing the field via an interface.
+func (v *LimitedAccessTokensAppLimitedAccessTokensLimitedAccessTokenConnectionNodesLimitedAccessToken) GetCreatedAt() time.Time {
+	return v.LimitedAccessToken.CreatedAt
+}
+
+// GetExpiresAt returns LimitedAccessTokensAppLimitedAccessTokensLimitedAccessTokenConnectionNodesLimitedAccessToken.ExpiresAt, and is useful for accessing the field via an interface.
+func (v *LimitedAccessTokensAppLimitedAccessTokensLimitedAccessTokenConnectionNodesLimitedAccessToken) GetExpiresAt() time.Time {
+	return v.LimitedAccessToken.ExpiresAt
+}
+
+func (v *LimitedAccessTokensAppLimitedAccessTokensLimitedAccessTokenConnectionNodesLimitedAccessToken) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*LimitedAccessTokensAppLimitedAccessTokensLimitedAccessTokenConnectionNodesLimitedAccessToken
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.LimitedAccessTokensAppLimitedAccessTokensLimitedAccessTokenConnectionNodesLimitedAccessToken = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.LimitedAccessToken)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalLimitedAccessTokensAppLimitedAccessTokensLimitedAccessTokenConnectionNodesLimitedAccessToken struct {
+	Id string `json:"id"`
+
+	Name string `json:"name"`
+
+	Token string `json:"token"`
+
+	TokenHeader string `json:"tokenHeader"`
+
+	CreatedAt time.Time `json:"createdAt"`
+
+	ExpiresAt time.Time `json:"expiresAt"`
+}
+
+func (v *LimitedAccessTokensAppLimitedAccessTokensLimitedAccessTokenConnectionNodesLimitedAccessToken) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *LimitedAccessTokensAppLimitedAccessTokensLimitedAccessTokenConnectionNodesLimitedAccessToken) __premarshalJSON() (*__premarshalLimitedAccessTokensAppLimitedAccessTokensLimitedAccessTokenConnectionNodesLimitedAccessToken, error) {
+	var retval __premarshalLimitedAccessTokensAppLimitedAccessTokensLimitedAccessTokenConnectionNodesLimitedAccessToken
+
+	retval.Id = v.LimitedAccessToken.Id
+	retval.Name = v.LimitedAccessToken.Name
+	retval.Token = v.LimitedAccessToken.Token
+	retval.TokenHeader = v.LimitedAccessToken.TokenHeader
+	retval.CreatedAt = v.LimitedAccessToken.CreatedAt
+	retval.ExpiresAt = v.LimitedAccessToken.ExpiresAt
+	return &retval, nil
+}
+
+// LimitedAccessTokensResponse is returned by LimitedAccessTokens on success.
+type LimitedAccessTokensResponse struct {
 	// Find an app by name
-	App IpAddressQueryApp `json:"app"`
+	App LimitedAccessTokensApp `json:"app"`
 }
 
-// GetApp returns IpAddressQueryResponse.App, and is useful for accessing the field via an interface.
-func (v *IpAddressQueryResponse) GetApp() IpAddressQueryApp { return v.App }
+// GetApp returns LimitedAccessTokensResponse.App, and is useful for accessing the field via an interface.
+func (v *LimitedAccessTokensResponse) GetApp() LimitedAccessTokensApp { return v.App }
 
 type OrganizationMemberRole string
 
@@ -2286,6 +2461,14 @@ func (v *__DeleteCertificateInput) GetApp() string { return v.App }
 // GetHostname returns __DeleteCertificateInput.Hostname, and is useful for accessing the field via an interface.
 func (v *__DeleteCertificateInput) GetHostname() string { return v.Hostname }
 
+// __DeleteLimitedAccessTokenInput is used internally by genqlient
+type __DeleteLimitedAccessTokenInput struct {
+	Id string `json:"id"`
+}
+
+// GetId returns __DeleteLimitedAccessTokenInput.Id, and is useful for accessing the field via an interface.
+func (v *__DeleteLimitedAccessTokenInput) GetId() string { return v.Id }
+
 // __DeleteVolumeInput is used internally by genqlient
 type __DeleteVolumeInput struct {
 	Volume string `json:"volume"`
@@ -2332,15 +2515,19 @@ func (v *__GetSecretsInput) GetName() string { return v.Name }
 
 // __IpAddressQueryInput is used internally by genqlient
 type __IpAddressQueryInput struct {
-	App  string `json:"app"`
-	Addr string `json:"addr"`
+	Id string `json:"id"`
 }
 
-// GetApp returns __IpAddressQueryInput.App, and is useful for accessing the field via an interface.
-func (v *__IpAddressQueryInput) GetApp() string { return v.App }
+// GetId returns __IpAddressQueryInput.Id, and is useful for accessing the field via an interface.
+func (v *__IpAddressQueryInput) GetId() string { return v.Id }
 
-// GetAddr returns __IpAddressQueryInput.Addr, and is useful for accessing the field via an interface.
-func (v *__IpAddressQueryInput) GetAddr() string { return v.Addr }
+// __LimitedAccessTokensInput is used internally by genqlient
+type __LimitedAccessTokensInput struct {
+	App string `json:"app"`
+}
+
+// GetApp returns __LimitedAccessTokensInput.App, and is useful for accessing the field via an interface.
+func (v *__LimitedAccessTokensInput) GetApp() string { return v.App }
 
 // __OrganizationInput is used internally by genqlient
 type __OrganizationInput struct {
@@ -2513,12 +2700,15 @@ func AllocateIpAddress(
 mutation AllocateIpAddress ($app: ID!, $region: String, $addrType: IPAddressType!) {
 	allocateIpAddress(input: {appId:$app,region:$region,type:$addrType}) {
 		ipAddress {
-			id
-			type
-			address
-			region
+			... IPAddressFragment
 		}
 	}
+}
+fragment IPAddressFragment on IPAddress {
+	id
+	type
+	address
+	region
 }
 `,
 		Variables: &__AllocateIpAddressInput{
@@ -2600,6 +2790,9 @@ fragment AppFragment on App {
 		id
 		slug
 	}
+	autoscaling {
+		preferredRegion
+	}
 	secrets {
 		name
 		createdAt
@@ -2642,22 +2835,17 @@ func CreateLimitedAccessToken(
 mutation CreateLimitedAccessToken ($input: CreateLimitedAccessTokenInput!) {
 	createLimitedAccessToken(input: $input) {
 		limitedAccessToken {
-			id
-			name
-			token
-			tokenHeader
-			createdAt
-			expiresAt
-			organization {
-				id
-				name
-			}
-			user {
-				id
-				name
-			}
+			... LimitedAccessToken
 		}
 	}
+}
+fragment LimitedAccessToken on LimitedAccessToken {
+	id
+	name
+	token
+	tokenHeader
+	createdAt
+	expiresAt
 }
 `,
 		Variables: &__CreateLimitedAccessTokenInput{
@@ -2879,6 +3067,38 @@ mutation DeleteCertificate ($app: ID!, $hostname: String!) {
 	return &data, err
 }
 
+func DeleteLimitedAccessToken(
+	ctx context.Context,
+	client graphql.Client,
+	id string,
+) (*DeleteLimitedAccessTokenResponse, error) {
+	req := &graphql.Request{
+		OpName: "DeleteLimitedAccessToken",
+		Query: `
+mutation DeleteLimitedAccessToken ($id: ID!) {
+	deleteLimitedAccessToken(input: {token:$id}) {
+		clientMutationId
+	}
+}
+`,
+		Variables: &__DeleteLimitedAccessTokenInput{
+			Id: id,
+		},
+	}
+	var err error
+
+	var data DeleteLimitedAccessTokenResponse
+	resp := &graphql.Response{Data: &data}
+
+	err = client.MakeRequest(
+		ctx,
+		req,
+		resp,
+	)
+
+	return &data, err
+}
+
 func DeleteVolume(
 	ctx context.Context,
 	client graphql.Client,
@@ -2963,6 +3183,9 @@ fragment AppFragment on App {
 	organization {
 		id
 		slug
+	}
+	autoscaling {
+		preferredRegion
 	}
 	secrets {
 		name
@@ -3149,31 +3372,74 @@ fragment SecretFragment on Secret {
 func IpAddressQuery(
 	ctx context.Context,
 	client graphql.Client,
-	app string,
-	addr string,
+	id string,
 ) (*IpAddressQueryResponse, error) {
 	req := &graphql.Request{
 		OpName: "IpAddressQuery",
 		Query: `
-query IpAddressQuery ($app: String, $addr: String!) {
-	app(name: $app) {
-		ipAddress(address: $addr) {
-			id
-			type
-			address
-			region
-		}
+query IpAddressQuery ($id: ID!) {
+	ipAddress(id: $id) {
+		... IPAddressFragment
 	}
+}
+fragment IPAddressFragment on IPAddress {
+	id
+	type
+	address
+	region
 }
 `,
 		Variables: &__IpAddressQueryInput{
-			App:  app,
-			Addr: addr,
+			Id: id,
 		},
 	}
 	var err error
 
 	var data IpAddressQueryResponse
+	resp := &graphql.Response{Data: &data}
+
+	err = client.MakeRequest(
+		ctx,
+		req,
+		resp,
+	)
+
+	return &data, err
+}
+
+func LimitedAccessTokens(
+	ctx context.Context,
+	client graphql.Client,
+	app string,
+) (*LimitedAccessTokensResponse, error) {
+	req := &graphql.Request{
+		OpName: "LimitedAccessTokens",
+		Query: `
+query LimitedAccessTokens ($app: String!) {
+	app(id: $app) {
+		limitedAccessTokens {
+			nodes {
+				... LimitedAccessToken
+			}
+		}
+	}
+}
+fragment LimitedAccessToken on LimitedAccessToken {
+	id
+	name
+	token
+	tokenHeader
+	createdAt
+	expiresAt
+}
+`,
+		Variables: &__LimitedAccessTokensInput{
+			App: app,
+		},
+	}
+	var err error
+
+	var data LimitedAccessTokensResponse
 	resp := &graphql.Response{Data: &data}
 
 	err = client.MakeRequest(
