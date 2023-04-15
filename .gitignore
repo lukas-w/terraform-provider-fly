@@ -42,3 +42,5 @@ terraform-provider-fly
 
 examples/local/
 tmp/
+
+graphql/generated.go
