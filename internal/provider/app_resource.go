@@ -147,8 +147,7 @@ func (r flyAppResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 	}
 
 	resp.Schema = schema.Schema{
-		Version:             3,
-		MarkdownDescription: "Fly app resource",
+		Version: 3,
 		Attributes: map[string]schema.Attribute{
 			"name": schema.StringAttribute{
 				MarkdownDescription: "Name of application",

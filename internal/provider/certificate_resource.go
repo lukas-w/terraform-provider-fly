@@ -43,37 +43,31 @@ func (cr flyCertResource) Metadata(_ context.Context, _ resource.MetadataRequest
 
 func (flyCertResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Fly certificate resource",
 		Attributes: map[string]schema.Attribute{
 			"app": schema.StringAttribute{
-				MarkdownDescription: "Name of app to attach to",
+				MarkdownDescription: APP_DESC,
 				Required:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			"hostname": schema.StringAttribute{
-				MarkdownDescription: "hostname",
 				Required:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			"id": schema.StringAttribute{
-				MarkdownDescription: "ID of certificate",
+				MarkdownDescription: ID_DESC,
 				Computed:            true,
 			},
 			"dns_validation_instructions": schema.StringAttribute{
-				MarkdownDescription: "DnsValidationHostname",
-				Computed:            true,
+				Computed: true,
 			},
 			"dns_validation_target": schema.StringAttribute{
-				MarkdownDescription: "DnsValidationTarget",
-				Computed:            true,
+				Computed: true,
 			},
 			"dns_validation_hostname": schema.StringAttribute{
-				MarkdownDescription: "DnsValidationHostname",
-				Computed:            true,
+				Computed: true,
 			},
 			"check": schema.BoolAttribute{
-				MarkdownDescription: "check",
-				Computed:            true,
+				Computed: true,
 			},
 		},
 	}

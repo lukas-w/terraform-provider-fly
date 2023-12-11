@@ -29,35 +29,29 @@ func (d certDataSource) Metadata(_ context.Context, _ datasource.MetadataRequest
 
 func (d certDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Fly certificate data source",
 		Attributes: map[string]schema.Attribute{
 			"app": schema.StringAttribute{
-				MarkdownDescription: "Name of app attached to",
+				MarkdownDescription: APP_DESC,
 				Required:            true,
 			},
 			"id": schema.StringAttribute{
-				MarkdownDescription: "ID of certificate",
+				MarkdownDescription: ID_DESC,
 				Computed:            true,
 			},
 			"dnsvalidationinstructions": schema.StringAttribute{
-				MarkdownDescription: "DnsValidationHostname",
-				Computed:            true,
+				Computed: true,
 			},
 			"dnsvalidationtarget": schema.StringAttribute{
-				MarkdownDescription: "DnsValidationTarget",
-				Computed:            true,
+				Computed: true,
 			},
 			"dnsvalidationhostname": schema.StringAttribute{
-				MarkdownDescription: "DnsValidationHostname",
-				Computed:            true,
+				Computed: true,
 			},
 			"check": schema.BoolAttribute{
-				MarkdownDescription: "check",
-				Computed:            true,
+				Computed: true,
 			},
 			"hostname": schema.StringAttribute{
-				MarkdownDescription: "hostname",
-				Required:            true,
+				Required: true,
 			},
 		},
 	}

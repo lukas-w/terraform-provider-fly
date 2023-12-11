@@ -29,18 +29,17 @@ func (i ipDataSource) Metadata(_ context.Context, _ datasource.MetadataRequest, 
 
 func (i ipDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Fly ip data source",
 		Attributes: map[string]schema.Attribute{
 			"address": schema.StringAttribute{
 				MarkdownDescription: "IP address",
 				Computed:            true,
 			},
 			"app": schema.StringAttribute{
-				MarkdownDescription: "Name of app to attach to",
+				MarkdownDescription: APP_DESC,
 				Required:            true,
 			},
 			"id": schema.StringAttribute{
-				MarkdownDescription: "ID of address",
+				MarkdownDescription: ID_DESC,
 				Required:            true,
 			},
 			"type": schema.StringAttribute{
@@ -48,7 +47,7 @@ func (i ipDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp
 				Computed:            true,
 			},
 			"region": schema.StringAttribute{
-				MarkdownDescription: "region",
+				MarkdownDescription: REGION_DESC,
 				Computed:            true,
 			},
 		},

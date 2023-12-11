@@ -61,11 +61,10 @@ func (mr flyMachineResource) Metadata(_ context.Context, _ resource.MetadataRequ
 
 func (flyMachineResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Fly machine resource",
-		Version:             1,
+		Version: 1,
 		Attributes: map[string]schema.Attribute{
 			"name": schema.StringAttribute{
-				MarkdownDescription: "machine name",
+				MarkdownDescription: NAME_DESC,
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
@@ -74,26 +73,25 @@ func (flyMachineResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				},
 			},
 			"region": schema.StringAttribute{
-				MarkdownDescription: "machine region",
+				MarkdownDescription: REGION_DESC,
 				Required:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
 			},
 			"id": schema.StringAttribute{
-				MarkdownDescription: "machine id",
+				MarkdownDescription: ID_DESC,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"app": schema.StringAttribute{
-				MarkdownDescription: "fly app",
+				MarkdownDescription: APP_DESC,
 				Required:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			"private_ip": schema.StringAttribute{
-				MarkdownDescription: "Private IP",
-				Computed:            true,
-				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+				Computed:      true,
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"config": schema.SingleNestedAttribute{
 				Required: true,
@@ -102,27 +100,24 @@ func (flyMachineResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 						Optional: true,
 						Attributes: map[string]schema.Attribute{
 							"cmd": schema.ListAttribute{
-								MarkdownDescription: "cmd",
-								Optional:            true,
+								Optional: true,
 								//Computed:            true,
 								ElementType: types.StringType,
 							},
 							"entrypoint": schema.ListAttribute{
-								MarkdownDescription: "image entrypoint",
-								Optional:            true,
+								Optional: true,
 								//Computed:            true,
 								ElementType: types.StringType,
 							},
 							"exec": schema.ListAttribute{
-								MarkdownDescription: "exec command",
-								Optional:            true,
+								Optional: true,
 								//Computed:            true,
 								ElementType: types.StringType,
 							},
 						},
 					},
 					"image": schema.StringAttribute{
-						MarkdownDescription: "docker image",
+						MarkdownDescription: "Protocol-less docker image, ex: `registry.fly.io/myapp:mytag`",
 						Required:            true,
 					},
 					"guest": schema.SingleNestedAttribute{
@@ -139,8 +134,7 @@ func (flyMachineResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 								Validators:          []validator.Int64{int64validator.AtLeast(1)},
 							},
 							"memory_mb": schema.Int64Attribute{
-								MarkdownDescription: "memory mb",
-								Required:            true,
+								Required: true,
 							},
 							"kernel_args": schema.ListAttribute{
 								ElementType: types.StringType,
@@ -186,7 +180,7 @@ func (flyMachineResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 								//},
 								"volume": schema.StringAttribute{
 									Required:            true,
-									MarkdownDescription: "Name or ID of volume",
+									MarkdownDescription: "ID of volume",
 								},
 							},
 						},
@@ -202,7 +196,7 @@ func (flyMachineResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 									NestedObject: schema.NestedAttributeObject{
 										Attributes: map[string]schema.Attribute{
 											"port": schema.Int64Attribute{
-												MarkdownDescription: "External port",
+												MarkdownDescription: "Mapped external port number",
 												Required:            true,
 											},
 											"handlers": schema.ListAttribute{
@@ -220,7 +214,7 @@ func (flyMachineResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 									},
 								},
 								"protocol": schema.StringAttribute{
-									MarkdownDescription: "network protocol",
+									MarkdownDescription: "Network protocol, `udp` or `tcp`",
 									Required:            true,
 								},
 								"internal_port": schema.Int64Attribute{

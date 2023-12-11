@@ -30,8 +30,6 @@ func (d appDataSource) Metadata(_ context.Context, _ datasource.MetadataRequest,
 
 func (appDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Retrieve info about graphql app",
-
 		Attributes: map[string]schema.Attribute{
 			"name": schema.StringAttribute{
 				MarkdownDescription: "Name of app",
