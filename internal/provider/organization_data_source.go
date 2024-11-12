@@ -36,17 +36,20 @@ func (s organizationDataSource) ValidateConfig(ctx context.Context, req datasour
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	specified := 3
+	unspecified := 0
 	if data.Name.IsUnknown() || data.Name.IsNull() {
-		specified--
+		resp.Diagnostics.AddWarning("Unspecified attribute", "name")
+		unspecified++
 	}
 	if data.Slug.IsUnknown() || data.Slug.IsNull() {
-		specified--
+		resp.Diagnostics.AddWarning("Unspecified attribute", "slug")
+		unspecified++
 	}
 	if data.ID.IsUnknown() || data.ID.IsNull() {
-		specified--
+		resp.Diagnostics.AddWarning("Unspecified attribute", "id")
+		unspecified++
 	}
-	if specified != 1 {
+	if unspecified != 2 {
 		resp.Diagnostics.AddError("Invalid configuration", "Exactly one of name, slug or id must be specified")
 	}
 }
