@@ -7,7 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/superfly/flyctl/api"
+	"github.com/superfly/fly-go"
 )
 
 type pgAttachmentResourceModel struct {
@@ -68,7 +68,7 @@ func (p pgAttachmentResource) Create(ctx context.Context, req resource.CreateReq
 	var plan pgAttachmentResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 
-	r, err := p.apiClient.AttachPostgresCluster(ctx, api.AttachPostgresClusterInput{
+	r, err := p.apiClient.AttachPostgresCluster(ctx, fly.AttachPostgresClusterInput{
 		AppID:                plan.App,
 		PostgresClusterAppID: plan.PostgresApp,
 		DatabaseName:         &plan.DatabaseName,
@@ -95,7 +95,7 @@ func (p pgAttachmentResource) Create(ctx context.Context, req resource.CreateReq
 	resp.Diagnostics.Append(resp.State.Set(ctx, plan)...)
 }
 
-func findAttachment(attachments []*api.PostgresClusterAttachment, data pgAttachmentResourceModel) *api.PostgresClusterAttachment {
+func findAttachment(attachments []*fly.PostgresClusterAttachment, data pgAttachmentResourceModel) *fly.PostgresClusterAttachment {
 	for _, a := range attachments {
 		if a.DatabaseName == data.DatabaseName && a.DatabaseUser == data.DatabaseUser && a.EnvironmentVariableName == data.VariableName {
 			return a
@@ -128,7 +128,7 @@ func (p pgAttachmentResource) Delete(ctx context.Context, req resource.DeleteReq
 	var state pgAttachmentResourceModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 
-	err := p.apiClient.DetachPostgresCluster(ctx, api.DetachPostgresClusterInput{
+	err := p.apiClient.DetachPostgresCluster(ctx, fly.DetachPostgresClusterInput{
 		AppID:                       state.App,
 		PostgresClusterId:           state.PostgresApp,
 		PostgresClusterAttachmentId: state.Id.Value,

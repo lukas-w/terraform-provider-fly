@@ -6,7 +6,7 @@ import (
 	"github.com/Khan/genqlient/graphql"
 	hreq "github.com/imroc/req/v3"
 	"github.com/samber/lo"
-	"github.com/superfly/flyctl/api"
+	"github.com/superfly/fly-go"
 	"net/http"
 	"time"
 )
@@ -25,10 +25,10 @@ const (
 	CpuTypeDedicated CpuType = "dedicated"
 )
 
-type Machines []*api.Machine
+type Machines []*fly.Machine
 
 func (m Machines) WithoutInactive() Machines {
-	return lo.Filter(m, func(m *api.Machine, _ int) bool {
+	return lo.Filter(m, func(m *fly.Machine, _ int) bool {
 		return m.Config != nil && m.Config.Metadata["process_group"] != "release_command" && m.State != "destroyed"
 	})
 }
@@ -39,8 +39,8 @@ func NewMachineAPI(httpClient *hreq.Client, endpoint string, app string) *Machin
 	}
 }
 
-func (a *MachineAPI) LockMachine(id string, timeout int) (*api.MachineLease, error) {
-	var res api.MachineLease
+func (a *MachineAPI) LockMachine(id string, timeout int) (*fly.MachineLease, error) {
+	var res fly.MachineLease
 	_, err := a.httpClient.R().SetResult(&res).Post(fmt.Sprintf("/%s/lease/?ttl=%d", id, timeout))
 	if err != nil {
 		return nil, err
@@ -48,7 +48,7 @@ func (a *MachineAPI) LockMachine(id string, timeout int) (*api.MachineLease, err
 	return &res, nil
 }
 
-func (a *MachineAPI) ReleaseMachine(lease api.MachineLease, id string) error {
+func (a *MachineAPI) ReleaseMachine(lease fly.MachineLease, id string) error {
 	_, err := a.httpClient.R().SetHeader(NonceHeader, lease.Data.Nonce).Delete(fmt.Sprintf("/%s/lease", id))
 	if err != nil {
 		return err
@@ -62,7 +62,7 @@ func (a *MachineAPI) WaitForMachine(id string, instanceID string) error {
 }
 
 // CreateMachine takes a MachineCreateOrUpdateRequest and creates the requested machine in the given app and then writes the response into the `res` param
-func (a *MachineAPI) CreateMachine(input api.LaunchMachineInput, res *api.Machine) error {
+func (a *MachineAPI) CreateMachine(input fly.LaunchMachineInput, res *fly.Machine) error {
 	createResponse, err := a.httpClient.R().SetBody(input).SetResult(res).Post("")
 
 	if err != nil {
@@ -75,7 +75,7 @@ func (a *MachineAPI) CreateMachine(input api.LaunchMachineInput, res *api.Machin
 	return nil
 }
 
-func (a *MachineAPI) UpdateMachine(input api.LaunchMachineInput, id string, res *api.Machine) error {
+func (a *MachineAPI) UpdateMachine(input fly.LaunchMachineInput, id string, res *fly.Machine) error {
 	lease, err := a.LockMachine(id, 30)
 	if err != nil {
 		return err
@@ -94,14 +94,14 @@ func (a *MachineAPI) UpdateMachine(input api.LaunchMachineInput, id string, res 
 	return nil
 }
 
-func (a *MachineAPI) ReadMachine(id string, res *api.Machine) (*hreq.Response, error) {
+func (a *MachineAPI) ReadMachine(id string, res *fly.Machine) (*hreq.Response, error) {
 	return a.httpClient.R().SetResult(res).Get(fmt.Sprintf("/%s", id))
 }
 
 func (a *MachineAPI) DeleteMachine(id string, maxRetries int) error {
 	deleted := false
 	for i := 0; i < maxRetries; i++ {
-		var machine api.Machine
+		var machine fly.Machine
 		readResponse, err := a.httpClient.R().SetResult(&machine).Get(fmt.Sprintf("/%s", id))
 		if err != nil {
 			return err

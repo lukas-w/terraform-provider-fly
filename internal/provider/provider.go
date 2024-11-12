@@ -12,7 +12,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	hreq "github.com/imroc/req/v3"
-	"github.com/superfly/flyctl/api"
+	"github.com/superfly/fly-go"
+	"github.com/superfly/fly-go/flaps"
 	"net/http"
 	"os"
 	"time"
@@ -50,7 +51,8 @@ type providerApi struct {
 	httpEndpoint string
 	gqlClient    gqlClient
 	httpClient   hreq.Client
-	apiClient    api.Client
+	apiClient    fly.Client
+	flapsClients map[string]*flaps.Client
 }
 
 func (c *providerApi) machineApi(app string) *apiv1.MachineAPI {
@@ -70,6 +72,30 @@ func (c *providerApi) configure(providerData any, diags *diag.Diagnostics) {
 			fmt.Sprintf("While creating the data source or resource, an unexpected clients type (%T) was received. This is always a bug in the clients code and should be reported to the clients developers.", p),
 		)
 	}
+}
+
+func (p *providerApi) getFlapsClient(ctx context.Context, app string) (*flaps.Client, error) {
+	if p.flapsClients == nil {
+		p.flapsClients = make(map[string]*flaps.Client)
+	}
+
+	if client, ok := p.flapsClients[app]; ok {
+		return client, nil
+	}
+
+	appCompact, err := p.apiClient.GetAppCompact(ctx, app)
+	if err != nil {
+		return nil, err
+	}
+	client, err := flaps.NewWithOptions(ctx, flaps.NewClientOpts{
+		AppName:    app,
+		AppCompact: appCompact,
+	})
+	if err != nil {
+		return nil, err
+	}
+	p.flapsClients[app] = client
+	return client, nil
 }
 
 type providerData struct {
@@ -160,9 +186,9 @@ func (p *provider) Configure(ctx context.Context, req tfsdkprovider.ConfigureReq
 		clients.httpEndpoint = "_api.internal:4280"
 	}
 
-	api.SetBaseURL(baseUrl)
-	clients.apiClient = *api.NewClient(p.token, "terraform-provider-fly", p.version, logger{ctx})
-	api.SetErrorLog(true)
+	fly.SetBaseURL(baseUrl)
+	clients.apiClient = *fly.NewClient(p.token, "terraform-provider-fly", p.version, logger{ctx})
+	fly.SetErrorLog(true)
 
 	resp.ResourceData = &clients
 	resp.DataSourceData = &clients
@@ -177,7 +203,6 @@ func (p *provider) Resources(ctx context.Context) []func() resource.Resource {
 		newFlyIpResource,
 		newFlyCertResource,
 		newFlyMachineResource,
-		newFlyDeploymentResource,
 		newOrganizationResource,
 		newRedisResource,
 		NewPgDbResource,

@@ -125,13 +125,16 @@ func (r redisResource) Create(ctx context.Context, req resource.CreateRequest, r
 	}
 
 	mresp, err := gql.CreateAddOn(ctx, r.gqlClient,
-		org.ID,
-		data.PrimaryRegion.Value,
-		data.Name.Value,
-		planId,
-		readRegions,
-		map[string]interface{}{
-			"eviction": data.Eviction.Value,
+		gql.CreateAddOnInput{
+			Type:           gql.AddOnTypeUpstashRedis,
+			OrganizationId: org.ID,
+			PrimaryRegion:  data.PrimaryRegion.Value,
+			Name:           data.Name.Value,
+			PlanId:         planId,
+			ReadRegions:    readRegions,
+			Options: map[string]interface{}{
+				"eviction": data.Eviction.Value,
+			},
 		},
 	)
 	if err != nil {
@@ -146,7 +149,7 @@ func (r redisResource) Create(ctx context.Context, req resource.CreateRequest, r
 }
 
 func (r redisResource) resolvePlan(ctx context.Context, name string, diags *diag.Diagnostics) string {
-	qresp, err := gql.ListAddOnPlans(ctx, r.gqlClient)
+	qresp, err := gql.ListAddOnPlans(ctx, r.gqlClient, gql.AddOnTypeUpstashRedis)
 	if err != nil {
 		diags.AddError("Error getting addon plans", err.Error())
 		return ""
@@ -174,7 +177,7 @@ func (r redisResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 }
 
 func (r redisResource) get(ctx context.Context, data *addonResourceModel, diag *diag.Diagnostics) bool {
-	qresp, err := gql.GetAddOn(ctx, r.gqlClient, data.Name.Value)
+	qresp, err := gql.GetAddOn(ctx, r.gqlClient, data.Name.Value, string(gql.AddOnTypeUpstashRedis))
 	if err != nil {
 		var errList gqlerror.List
 		if errors.As(err, &errList) {
@@ -216,7 +219,7 @@ func (r redisResource) Update(ctx context.Context, req resource.UpdateRequest, r
 
 	var readRegions []string
 	resp.Diagnostics.Append(plan.ReadRegions.ElementsAs(ctx, readRegions, false)...)
-	_, err := gql.UpdateAddOn(ctx, r.gqlClient, state.Name.Value, planId, readRegions)
+	_, err := gql.UpdateAddOn(ctx, r.gqlClient, state.Name.Value, planId, readRegions, map[string]interface{}{}, map[string]interface{}{})
 	if err != nil {
 		resp.Diagnostics.AddError("Error updating addon", err.Error())
 		return

@@ -6,7 +6,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/superfly/flyctl/api"
+	"github.com/superfly/fly-go"
 )
 
 type organizationResourceModel struct {
@@ -18,7 +18,7 @@ type organizationResource struct {
 	flyResource
 }
 
-func (m *organizationResourceModel) fromApiOrganization(org api.Organization) {
+func (m *organizationResourceModel) fromApiOrganization(org fly.Organization) {
 	m.Name = types.String{Value: org.Name}
 	m.ID = types.String{Value: org.ID}
 	m.Slug = types.String{Value: org.Slug}

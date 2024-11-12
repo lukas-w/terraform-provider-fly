@@ -13,7 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
-	"github.com/superfly/flyctl/api"
+	"github.com/superfly/fly-go"
 	"time"
 )
 
@@ -28,12 +28,12 @@ func newFlyMachineResource() resource.Resource {
 	return &flyMachineResource{}
 }
 
-func (d *flyMachineResourceData) makeMachineRequest(ctx context.Context, diags *diag.Diagnostics) *api.LaunchMachineInput {
+func (d *flyMachineResourceData) makeMachineRequest(ctx context.Context, diags *diag.Diagnostics) *fly.LaunchMachineInput {
 	conf := d.Config.toApiConfig(ctx, diags)
 	if diags.HasError() {
 		return nil
 	}
-	return &api.LaunchMachineInput{
+	return &fly.LaunchMachineInput{
 		Name:   d.Name.Value,
 		Region: d.Region.Value,
 		Config: conf,
@@ -365,30 +365,31 @@ func (mr flyMachineResource) ValidateOpenTunnel(diags *diag.Diagnostics) bool {
 	return true
 }
 
-func TfServicesToServices(input []TfService) []api.MachineService {
-	services := make([]api.MachineService, 0)
+func TfServicesToServices(input []TfService) []fly.MachineService {
+	services := make([]fly.MachineService, 0)
 	for _, s := range input {
-		var ports []api.MachinePort
+		var ports []fly.MachinePort
 		for _, j := range s.Ports {
 			var handlers []string
 			for _, k := range j.Handlers {
 				handlers = append(handlers, k.Value)
 			}
-			ports = append(ports, api.MachinePort{
-				Port:       int(j.Port.Value),
+			port := int(j.Port.Value)
+			ports = append(ports, fly.MachinePort{
+				Port:       &port,
 				Handlers:   handlers,
-				ForceHttps: j.ForceHttps.Value,
+				ForceHTTPS: j.ForceHttps.Value,
 			})
 		}
-		var concurrency *api.MachineServiceConcurrency
+		var concurrency *fly.MachineServiceConcurrency
 		if s.Concurrency != nil {
-			concurrency = &api.MachineServiceConcurrency{
+			concurrency = &fly.MachineServiceConcurrency{
 				Type:      s.Concurrency.Type.Value,
 				HardLimit: int(s.Concurrency.HardLimit.Value),
 				SoftLimit: int(s.Concurrency.SoftLimit.Value),
 			}
 		}
-		services = append(services, api.MachineService{
+		services = append(services, fly.MachineService{
 			Ports:        ports,
 			Protocol:     s.Protocol.Value,
 			InternalPort: int(s.InternalPort.Value),
@@ -398,7 +399,7 @@ func TfServicesToServices(input []TfService) []api.MachineService {
 	return services
 }
 
-func ServicesToTfServices(input []api.MachineService) []TfService {
+func ServicesToTfServices(input []fly.MachineService) []TfService {
 	tfservices := make([]TfService, 0)
 	for _, s := range input {
 		var tfports []TfPort
@@ -408,9 +409,9 @@ func ServicesToTfServices(input []api.MachineService) []TfService {
 				handlers = append(handlers, types.String{Value: k})
 			}
 			tfports = append(tfports, TfPort{
-				Port:       types.Int64{Value: int64(j.Port)},
+				Port:       types.Int64{Value: int64(*j.Port)},
 				Handlers:   handlers,
-				ForceHttps: types.Bool{Value: j.ForceHttps},
+				ForceHttps: types.Bool{Value: j.ForceHTTPS},
 			})
 		}
 		var concurrency *TfServiceConcurrency
@@ -452,7 +453,7 @@ func (mr flyMachineResource) Create(ctx context.Context, req resource.CreateRequ
 		resp.Diagnostics.AddError("error creating machine request", "Request is nil. This is a bug.")
 		return
 	}
-	var machine api.Machine
+	var machine fly.Machine
 	err := machineAPI.CreateMachine(*mReq, &machine)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to create machine", err.Error())
@@ -491,7 +492,7 @@ func (mr flyMachineResource) Read(ctx context.Context, req resource.ReadRequest,
 
 	machineAPI := mr.machineApi(data.App.Value)
 
-	var machine api.Machine
+	var machine fly.Machine
 	_, err := machineAPI.ReadMachine(data.Id.Value, &machine)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to get machine", err.Error())
@@ -519,7 +520,7 @@ func (mr flyMachineResource) Update(ctx context.Context, req resource.UpdateRequ
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	var machine api.Machine
+	var machine fly.Machine
 	err := machineAPI.UpdateMachine(*mReq, state.Id.Value, &machine)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to update machine", err.Error())
@@ -573,9 +574,9 @@ func (mr flyMachineResource) WaitForChecks(ctx context.Context, data flyMachineR
 
 	timeoutCh := time.After(timeout)
 
-	var machine api.Machine
+	var machine fly.Machine
 	var err error
-	var failingChecks []*api.MachineCheckStatus
+	var failingChecks []*fly.MachineCheckStatus
 
 	numErrors := 0
 	for numErrors < maxErrors {
@@ -600,7 +601,7 @@ func (mr flyMachineResource) WaitForChecks(ctx context.Context, data flyMachineR
 				return
 			}
 
-			failingChecks = make([]*api.MachineCheckStatus, 0)
+			failingChecks = make([]*fly.MachineCheckStatus, 0)
 			for _, c := range machine.Checks {
 				if c.Status != "passing" {
 					failingChecks = append(failingChecks, c)
@@ -621,7 +622,7 @@ func (mr flyMachineResource) WaitForChecks(ctx context.Context, data flyMachineR
 	return
 }
 
-func allChecksPassing(checks []*api.MachineCheckStatus) bool {
+func allChecksPassing(checks []*fly.MachineCheckStatus) bool {
 	for _, c := range checks {
 		if c.Status != "passing" {
 			return false

@@ -6,7 +6,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/superfly/flyctl/api"
+	"github.com/superfly/fly-go"
 )
 
 type TfPort struct {
@@ -109,9 +109,19 @@ type flyMachineResourceData struct {
 	PrivateIP types.String `tfsdk:"private_ip"`
 }
 
-func (c *TfCheck) updateFromApi(ac api.MachineCheck, _ *diag.Diagnostics) {
-	c.Type = types.String{Value: ac.Type}
-	c.Port = types.Int64{Value: int64(ac.Port)}
+func (c *TfCheck) updateFromApi(ac fly.MachineCheck, _ *diag.Diagnostics) {
+	if ac.Type != nil {
+		c.Type = types.String{Value: *ac.Type}
+	} else {
+		c.Type = types.String{Null: true}
+	}
+
+	if ac.Port != nil {
+		c.Port = types.Int64{Value: int64(*ac.Port)}
+	} else {
+		c.Port = types.Int64{Null: true}
+	}
+
 	if ac.Interval == nil {
 		c.Interval = DurationNull()
 	} else if c.Interval.IsUnknown() || c.Interval.IsNull() || !c.Interval.EqualDuration(ac.Interval.Duration) {
@@ -134,18 +144,18 @@ func (c *TfCheck) updateFromApi(ac api.MachineCheck, _ *diag.Diagnostics) {
 	}
 }
 
-func (t *TfMachineInit) toApi() api.MachineInit {
+func (t *TfMachineInit) toApi() fly.MachineInit {
 	if t == nil {
-		return api.MachineInit{}
+		return fly.MachineInit{}
 	}
-	return api.MachineInit{
+	return fly.MachineInit{
 		Exec:       t.Exec,
 		Entrypoint: t.Entrypoint,
 		Cmd:        t.Cmd,
 	}
 }
 
-func (d *flyMachineConfigData) updateGuestFromApiData(g *api.MachineGuest) {
+func (d *flyMachineConfigData) updateGuestFromApiData(g *fly.MachineGuest) {
 	if g != nil {
 		d.Guest = types.Object{AttrTypes: TfGuestAttrTypes, Attrs: map[string]attr.Value{
 			"cpus":        types.Int64{Value: int64(g.CPUs)},
@@ -158,7 +168,7 @@ func (d *flyMachineConfigData) updateGuestFromApiData(g *api.MachineGuest) {
 	}
 }
 
-func (d *flyMachineConfigData) updateFromApiCreateData(c api.MachineConfig) (diags diag.Diagnostics) {
+func (d *flyMachineConfigData) updateFromApiCreateData(c fly.MachineConfig) (diags diag.Diagnostics) {
 	d.Metadata = utils.KVToTfMap(c.Metadata, types.StringType, true)
 	d.Env = utils.KVToTfMap(c.Env, types.StringType, true)
 	d.updateGuestFromApiData(c.Guest)
@@ -179,7 +189,7 @@ func (d *flyMachineConfigData) updateFromApiCreateData(c api.MachineConfig) (dia
 	return
 }
 
-func (d *flyMachineConfigData) updateFromApiData(c api.MachineConfig) (diags diag.Diagnostics) {
+func (d *flyMachineConfigData) updateFromApiData(c fly.MachineConfig) (diags diag.Diagnostics) {
 	diags.Append(d.updateFromApiCreateData(c)...)
 
 	d.Image = types.String{Value: c.Image}
@@ -242,7 +252,7 @@ func (d *flyMachineConfigData) updateFromApiData(c api.MachineConfig) (diags dia
 		d.Restart = &TfRestart{
 			Policy: types.String{Value: string(c.Restart.Policy)},
 		}
-		if d.Restart.Policy.Value == string(api.MachineRestartPolicyOnFailure) {
+		if d.Restart.Policy.Value == string(fly.MachineRestartPolicyOnFailure) {
 			d.Restart.MaxRetries = types.Int64{Value: int64(c.Restart.MaxRetries)}
 		} else {
 			d.Restart.MaxRetries = types.Int64{Null: true}
@@ -251,15 +261,15 @@ func (d *flyMachineConfigData) updateFromApiData(c api.MachineConfig) (diags dia
 	return
 }
 
-func (d *flyMachineConfigData) toApiConfig(ctx context.Context, diags *diag.Diagnostics) *api.MachineConfig {
-	conf := api.MachineConfig{
+func (d *flyMachineConfigData) toApiConfig(ctx context.Context, diags *diag.Diagnostics) *fly.MachineConfig {
+	conf := fly.MachineConfig{
 		Image:    d.Image.Value,
 		Services: TfServicesToServices(d.Services),
 		Init:     d.Init.toApi(),
 	}
 
 	if !d.Guest.IsNull() && !d.Guest.IsUnknown() {
-		conf.Guest = &api.MachineGuest{
+		conf.Guest = &fly.MachineGuest{
 			CPUs:     int(d.Guest.Attrs["cpus"].(types.Int64).Value),
 			CPUKind:  d.Guest.Attrs["cpu_kind"].(types.String).Value,
 			MemoryMB: int(d.Guest.Attrs["memory_mb"].(types.Int64).Value),
@@ -280,9 +290,9 @@ func (d *flyMachineConfigData) toApiConfig(ctx context.Context, diags *diag.Diag
 	}
 
 	if len(d.Mounts) > 0 {
-		var mounts []api.MachineMount
+		var mounts []fly.MachineMount
 		for _, m := range d.Mounts {
-			mounts = append(mounts, api.MachineMount{
+			mounts = append(mounts, fly.MachineMount{
 				//Encrypted: m.Encrypted.Value,
 				Path: m.Path.Value,
 				//SizeGb:    int(m.SizeGb.Value),
@@ -292,7 +302,7 @@ func (d *flyMachineConfigData) toApiConfig(ctx context.Context, diags *diag.Diag
 		conf.Mounts = mounts
 	}
 
-	conf.Processes = make([]api.MachineProcess, len(d.Processes))
+	conf.Processes = make([]fly.MachineProcess, len(d.Processes))
 	for i, p := range d.Processes {
 		var env map[string]string
 		diags.Append(p.Env.ElementsAs(ctx, &env, false)...)
@@ -300,7 +310,7 @@ func (d *flyMachineConfigData) toApiConfig(ctx context.Context, diags *diag.Diag
 		if diags.HasError() {
 			return nil
 		}
-		conf.Processes[i] = api.MachineProcess{
+		conf.Processes[i] = fly.MachineProcess{
 			ExecOverride:       p.Exec,
 			EntrypointOverride: p.Entrypoint,
 			CmdOverride:        p.Cmd,
@@ -310,7 +320,7 @@ func (d *flyMachineConfigData) toApiConfig(ctx context.Context, diags *diag.Diag
 	}
 
 	if d.Metrics != nil {
-		conf.Metrics = &api.MachineMetrics{
+		conf.Metrics = &fly.MachineMetrics{
 			Port: int(d.Metrics.Port.Value),
 			Path: d.Metrics.Path.Value,
 		}
@@ -320,34 +330,35 @@ func (d *flyMachineConfigData) toApiConfig(ctx context.Context, diags *diag.Diag
 		conf.Schedule = *d.Schedule
 	}
 
-	conf.Checks = make(map[string]api.MachineCheck, len(d.Checks))
+	conf.Checks = make(map[string]fly.MachineCheck, len(d.Checks))
 	for k, c := range d.Checks {
-		ac := api.MachineCheck{
-			Type: c.Type.Value,
-			Port: uint16(c.Port.Value),
+		port := int(c.Port.Value)
+		ac := fly.MachineCheck{
+			Type: &c.Type.Value,
+			Port: &port,
 		}
 		if c.Interval.IsUnknown() || c.Interval.IsNull() {
 			ac.Interval = nil
 		} else {
-			ac.Interval = &api.Duration{Duration: *c.Interval.GetDuration()}
+			ac.Interval = &fly.Duration{Duration: *c.Interval.GetDuration()}
 		}
 		if c.Timeout.IsUnknown() || c.Timeout.IsNull() {
 			ac.Timeout = nil
 		} else {
-			ac.Timeout = &api.Duration{Duration: *c.Timeout.GetDuration()}
+			ac.Timeout = &fly.Duration{Duration: *c.Timeout.GetDuration()}
 		}
 		if !c.HttpPath.IsNull() && !c.HttpPath.IsUnknown() {
-			ac.HTTPPath = api.StringPointer(c.HttpPath.Value)
+			ac.HTTPPath = fly.StringPointer(c.HttpPath.Value)
 		}
 		if !c.HttpMethod.IsNull() && !c.HttpMethod.IsUnknown() {
-			ac.HTTPMethod = api.StringPointer(c.HttpMethod.Value)
+			ac.HTTPMethod = fly.StringPointer(c.HttpMethod.Value)
 		}
 		conf.Checks[k] = ac
 	}
 
 	if d.Restart != nil {
 		if !d.Restart.Policy.IsNull() && !d.Restart.Policy.IsUnknown() {
-			conf.Restart.Policy = api.MachineRestartPolicy(d.Restart.Policy.Value)
+			conf.Restart.Policy = fly.MachineRestartPolicy(d.Restart.Policy.Value)
 		}
 		if !d.Restart.MaxRetries.IsNull() && !d.Restart.MaxRetries.IsUnknown() {
 			conf.Restart.MaxRetries = int(d.Restart.MaxRetries.Value)
@@ -357,7 +368,7 @@ func (d *flyMachineConfigData) toApiConfig(ctx context.Context, diags *diag.Diag
 }
 
 // CreateMachine response is incomplete, so to avoid deleting data we only set selected fields here
-func (d *flyMachineResourceData) updateFromApiCreateData(m api.Machine) (diags diag.Diagnostics) {
+func (d *flyMachineResourceData) updateFromApiCreateData(m fly.Machine) (diags diag.Diagnostics) {
 	d.Name = types.String{Value: m.Name}
 	d.Id = types.String{Value: m.ID}
 	d.PrivateIP = types.String{Value: m.PrivateIP}
@@ -369,7 +380,7 @@ func (d *flyMachineResourceData) updateFromApiCreateData(m api.Machine) (diags d
 	return
 }
 
-func (d *flyMachineResourceData) updateFromApiData(m api.Machine) (diags diag.Diagnostics) {
+func (d *flyMachineResourceData) updateFromApiData(m fly.Machine) (diags diag.Diagnostics) {
 	diags.Append(d.updateFromApiCreateData(m)...)
 	if diags.HasError() {
 		return

@@ -6,7 +6,7 @@ import (
 	"github.com/fly-apps/terraform-provider-fly/pkg/apiv1"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	hreq "github.com/imroc/req/v3"
-	"github.com/superfly/flyctl/api"
+	"github.com/superfly/fly-go"
 )
 
 type pgResource struct {
@@ -48,7 +48,7 @@ func (r pgResource) getLeaderIP(ctx context.Context, app string, diags *diag.Dia
 	return leader.PrivateIP
 }
 
-func machineRole(machine *api.Machine) (role string) {
+func machineRole(machine *fly.Machine) (role string) {
 	role = "unknown"
 
 	for _, check := range machine.Checks {
@@ -64,7 +64,7 @@ func machineRole(machine *api.Machine) (role string) {
 	return role
 }
 
-func findLeader(machines apiv1.Machines) *api.Machine {
+func findLeader(machines apiv1.Machines) *fly.Machine {
 	for _, machine := range machines {
 		if machineRole(machine) == "leader" {
 			return machine

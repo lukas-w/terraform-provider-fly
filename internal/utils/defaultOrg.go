@@ -3,10 +3,10 @@ package utils
 import (
 	"context"
 	"errors"
-	"github.com/superfly/flyctl/api"
+	"github.com/superfly/fly-go"
 )
 
-func GetDefaultOrg(ctx context.Context, client api.Client) (*api.Organization, error) {
+func GetDefaultOrg(ctx context.Context, client fly.Client) (*fly.Organization, error) {
 	orgs, err := client.GetOrganizations(ctx)
 	if err != nil {
 		return nil, err

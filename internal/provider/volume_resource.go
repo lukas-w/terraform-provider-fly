@@ -10,7 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
-	"github.com/superfly/flyctl/api"
+	"github.com/superfly/fly-go"
 	"strings"
 )
 
@@ -34,11 +34,10 @@ type flyVolumeResourceData struct {
 	Encrypted types.Bool   `tfsdk:"encrypted"`
 }
 
-func (d *flyVolumeResourceData) fromApiVolume(v api.Volume) {
+func (d *flyVolumeResourceData) fromApiVolume(v fly.Volume) {
 	d.Id = types.String{Value: v.ID}
 	d.Name = types.String{Value: v.Name}
 	d.Size = types.Int64{Value: int64(v.SizeGb)}
-	d.Appid = types.String{Value: v.App.Name}
 	d.Region = types.String{Value: v.Region}
 	d.Encrypted = types.Bool{Value: v.Encrypted}
 }
@@ -104,12 +103,19 @@ func (vr flyVolumeResource) Create(ctx context.Context, req resource.CreateReque
 	diags := req.Plan.Get(ctx, &data)
 	resp.Diagnostics.Append(diags...)
 
-	v, err := vr.apiClient.CreateVolume(ctx, api.CreateVolumeInput{
-		AppID:     data.Appid.Value,
+	client, err := vr.getFlapsClient(ctx, data.Appid.Value)
+	if err != nil {
+		resp.Diagnostics.AddError("Error getting flaps client", err.Error())
+		return
+	}
+
+	sizeGb := int(data.Size.Value)
+	encrypted := data.Encrypted.IsNull() || data.Encrypted.IsUnknown() || data.Encrypted.Value
+	v, err := client.CreateVolume(ctx, fly.CreateVolumeRequest{
 		Name:      data.Name.Value,
 		Region:    data.Region.Value,
-		SizeGb:    int(data.Size.Value),
-		Encrypted: data.Encrypted.IsNull() || data.Encrypted.IsUnknown() || data.Encrypted.Value,
+		SizeGb:    &sizeGb,
+		Encrypted: &encrypted,
 	})
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to create volume", err.Error())
@@ -128,7 +134,13 @@ func (vr flyVolumeResource) Read(ctx context.Context, req resource.ReadRequest, 
 
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 
-	v, err := vr.apiClient.GetVolume(ctx, data.Id.Value)
+	client, err := vr.getFlapsClient(ctx, data.Appid.Value)
+	if err != nil {
+		resp.Diagnostics.AddError("Error getting flaps client", err.Error())
+		return
+	}
+
+	v, err := client.GetVolume(ctx, data.Id.Value)
 	if err != nil && strings.ToLower(err.Error()) == "could not find volume" {
 		resp.State.RemoveResource(ctx)
 		return
@@ -153,14 +165,23 @@ func (vr flyVolumeResource) Update(ctx context.Context, req resource.UpdateReque
 		return
 	}
 
+	client, err := vr.getFlapsClient(ctx, state.Appid.Value)
+	if err != nil {
+		resp.Diagnostics.AddError("Error getting flaps client", err.Error())
+		return
+	}
+
 	if plan.Size.Value > state.Size.Value {
-		v, err := vr.apiClient.ExtendVolume(ctx, api.ExtendVolumeInput{
-			VolumeID: state.Id.Value,
-			SizeGb:   int(plan.Size.Value),
-		})
+		v, needsRestart, err := client.ExtendVolume(ctx, state.Id.Value, int(plan.Size.Value))
 		if err != nil {
 			resp.Diagnostics.AddError("error extending volume", err.Error())
 			return
+		}
+		if needsRestart {
+			resp.Diagnostics.AddWarning(
+				"app needs restart",
+				fmt.Sprintf("app %s needs to be restarted after extending volume %s with ID %s", state.Appid.Value, state.Name.Value, state.Id.Value),
+			)
 		}
 		state.fromApiVolume(*v)
 	}
@@ -171,7 +192,13 @@ func (vr flyVolumeResource) Delete(ctx context.Context, req resource.DeleteReque
 	var data flyVolumeResourceData
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 
-	_, err := vr.apiClient.DeleteVolume(ctx, data.Id.Value)
+	client, err := vr.getFlapsClient(ctx, data.Appid.Value)
+	if err != nil {
+		resp.Diagnostics.AddError("Error getting flaps client", err.Error())
+		return
+	}
+
+	_, err = client.DeleteVolume(ctx, data.Id.Value)
 	if err != nil {
 		resp.Diagnostics.AddError("Delete volume failed", err.Error())
 		return

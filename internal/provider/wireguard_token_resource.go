@@ -6,7 +6,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/superfly/flyctl/api"
+	"github.com/superfly/fly-go"
 )
 
 type flyWireguardTokenResource struct {
@@ -59,7 +59,7 @@ func (f flyWireguardTokenResource) Create(ctx context.Context, req resource.Crea
 	if !(data.Name.IsUnknown() || data.Name.IsNull()) {
 		name = data.Name.Value
 	}
-	token, err := f.apiClient.CreateDelegatedWireGuardToken(ctx, &api.Organization{ID: data.Organization.Value}, name)
+	token, err := f.apiClient.CreateDelegatedWireGuardToken(ctx, &fly.Organization{ID: data.Organization.Value}, name)
 	if err != nil {
 		resp.Diagnostics.AddError("CreateDelegatedWireGuardToken failed", err.Error())
 		return
@@ -86,7 +86,7 @@ func (f flyWireguardTokenResource) Delete(ctx context.Context, req resource.Dele
 	} else {
 		token = &data.Token.Value
 	}
-	err := f.apiClient.DeleteDelegatedWireGuardToken(ctx, &api.Organization{ID: data.Organization.Value}, name, token)
+	err := f.apiClient.DeleteDelegatedWireGuardToken(ctx, &fly.Organization{ID: data.Organization.Value}, name, token)
 	if err != nil {
 		resp.Diagnostics.AddError("DeleteDelegatedWireGuardToken failed", err.Error())
 		return

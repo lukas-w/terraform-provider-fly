@@ -13,7 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/superfly/flyctl/api"
+	"github.com/superfly/fly-go"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 	"strings"
 	"time"
@@ -480,7 +480,7 @@ func (r flyAppResource) ImportState(ctx context.Context, req resource.ImportStat
 	resource.ImportStatePassthroughID(ctx, path.Root("name"), req, resp)
 }
 
-func (r flyAppResource) resolveOrganization(ctx context.Context, slug types.String, diags *diag.Diagnostics) (org *api.Organization) {
+func (r flyAppResource) resolveOrganization(ctx context.Context, slug types.String, diags *diag.Diagnostics) (org *fly.Organization) {
 	var err error
 	if slug.IsUnknown() || slug.IsNull() {
 		org, err = utils.GetDefaultOrg(ctx, r.apiClient)

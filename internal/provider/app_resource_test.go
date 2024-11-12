@@ -7,7 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
-	"github.com/superfly/flyctl/api"
+	"github.com/superfly/fly-go"
 	"os"
 	"testing"
 )
@@ -17,8 +17,8 @@ func TestAccApp_basic(t *testing.T) {
 	resourceName := fmt.Sprintf("fly_app.%s", appName)
 	name := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 
-	api.SetBaseURL(baseUrl)
-	client := *api.NewClient(os.Getenv("FLY_API_TOKEN"), "terraform-provider-fly", "test", logger{context.Background()})
+	fly.SetBaseURL(baseUrl)
+	client := *fly.NewClient(os.Getenv("FLY_API_TOKEN"), "terraform-provider-fly", "test", logger{context.Background()})
 
 	var digest1 string
 
