@@ -23,7 +23,7 @@ type organizationDataSourceModel struct {
 	Slug    types.String `tfsdk:"slug"`
 	ID      types.String `tfsdk:"id"`
 	Type    types.String `tfsdk:"type"`
-	Members []orgMember  `tfsdk:"member"`
+	Members []orgMember  `tfsdk:"members"`
 }
 
 type organizationDataSource struct {
