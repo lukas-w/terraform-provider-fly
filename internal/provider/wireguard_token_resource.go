@@ -55,14 +55,18 @@ func (f flyWireguardTokenResource) Create(ctx context.Context, req resource.Crea
 	var data flyWireguardTokenModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
 
-	token, err := f.apiClient.CreateDelegatedWireGuardToken(ctx, &api.Organization{ID: data.Organization.Value}, data.Name.String())
+	name := ""
+	if !(data.Name.IsUnknown() || data.Name.IsNull()) {
+		name = data.Name.Value
+	}
+	token, err := f.apiClient.CreateDelegatedWireGuardToken(ctx, &api.Organization{ID: data.Organization.Value}, name)
 	if err != nil {
 		resp.Diagnostics.AddError("CreateDelegatedWireGuardToken failed", err.Error())
 		return
 	}
 
 	data.Token = types.String{Value: token.Token}
-	resp.Diagnostics.Append(req.Plan.Set(ctx, data)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, data)...)
 }
 
 func (f flyWireguardTokenResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
