@@ -29,10 +29,10 @@ func newFlyCertResource() resource.Resource {
 type flyCertResourceData struct {
 	Id                        types.String `tfsdk:"id"`
 	Appid                     types.String `tfsdk:"app"`
-	Dnsvalidationinstructions types.String `tfsdk:"dnsvalidationinstructions"`
-	Dnsvalidationhostname     types.String `tfsdk:"dnsvalidationhostname"`
-	Dnsvalidationtarget       types.String `tfsdk:"dnsvalidationtarget"`
-	Hostname                  types.String `tfsdk:"hostname"`
+	DnsValidationInstructions types.String `tfsdk:"dns_validation_instructions"`
+	DnsValidationHostname types.String `tfsdk:"dns_validation_hostname"`
+	DnsValidationTarget   types.String `tfsdk:"dns_validation_target"`
+	Hostname              types.String `tfsdk:"hostname"`
 	Check                     types.Bool   `tfsdk:"check"`
 }
 
@@ -61,17 +61,17 @@ func (flyCertResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostic
 				Computed:            true,
 				Type:                types.StringType,
 			},
-			"dnsvalidationinstructions": {
+			"dns_validation_instructions": {
 				MarkdownDescription: "DnsValidationHostname",
 				Type:                types.StringType,
 				Computed:            true,
 			},
-			"dnsvalidationtarget": {
+			"dns_validation_target": {
 				MarkdownDescription: "DnsValidationTarget",
 				Type:                types.StringType,
 				Computed:            true,
 			},
-			"dnsvalidationhostname": {
+			"dns_validation_hostname": {
 				MarkdownDescription: "DnsValidationHostname",
 				Type:                types.StringType,
 				Computed:            true,
@@ -99,9 +99,9 @@ func (cr flyCertResource) Create(ctx context.Context, req resource.CreateRequest
 	data = flyCertResourceData{
 		Id:                        types.String{Value: q.AddCertificate.Certificate.Id},
 		Appid:                     types.String{Value: data.Appid.Value},
-		Dnsvalidationinstructions: types.String{Value: q.AddCertificate.Certificate.DnsValidationInstructions},
-		Dnsvalidationhostname:     types.String{Value: q.AddCertificate.Certificate.DnsValidationHostname},
-		Dnsvalidationtarget:       types.String{Value: q.AddCertificate.Certificate.DnsValidationTarget},
+		DnsValidationInstructions: types.String{Value: q.AddCertificate.Certificate.DnsValidationInstructions},
+		DnsValidationHostname:     types.String{Value: q.AddCertificate.Certificate.DnsValidationHostname},
+		DnsValidationTarget:       types.String{Value: q.AddCertificate.Certificate.DnsValidationTarget},
 		Hostname:                  types.String{Value: q.AddCertificate.Certificate.Hostname},
 		Check:                     types.Bool{Value: q.AddCertificate.Certificate.Check},
 	}
@@ -140,9 +140,9 @@ func (cr flyCertResource) Read(ctx context.Context, req resource.ReadRequest, re
 	data = flyCertResourceData{
 		Id:                        types.String{Value: query.App.Certificate.Id},
 		Appid:                     types.String{Value: data.Appid.Value},
-		Dnsvalidationinstructions: types.String{Value: query.App.Certificate.DnsValidationInstructions},
-		Dnsvalidationhostname:     types.String{Value: query.App.Certificate.DnsValidationHostname},
-		Dnsvalidationtarget:       types.String{Value: query.App.Certificate.DnsValidationTarget},
+		DnsValidationInstructions: types.String{Value: query.App.Certificate.DnsValidationInstructions},
+		DnsValidationHostname:     types.String{Value: query.App.Certificate.DnsValidationHostname},
+		DnsValidationTarget:       types.String{Value: query.App.Certificate.DnsValidationTarget},
 		Hostname:                  types.String{Value: query.App.Certificate.Hostname},
 		Check:                     types.Bool{Value: query.App.Certificate.Check},
 	}
