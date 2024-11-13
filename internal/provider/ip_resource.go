@@ -44,12 +44,18 @@ func (r *flyIpResourceData) fromApi(f graphql.IPAddressFragment) {
 	r.Id = types.String{Value: f.Id}
 	r.Region = types.String{Value: f.Region}
 	r.Address = types.String{Value: f.Address}
-	if f.Type == graphql.IPAddressTypeV4 {
-		r.Type = types.String{Value: "v4"}
-	} else {
+	r.Type = types.String{Value: string(f.Type)}
+	if f.Type == "private_v6" {
 		r.Type = types.String{Value: "v6"}
+		r.Private = types.Bool{Value: true}
+	} else if f.Type == "v6" {
+		r.Type = types.String{Value: "v6"}
+		r.Private = types.Bool{Value: isPrivate(f.Address)}
+	} else if f.Type == "v4" {
+		r.Type = types.String{Value: "v4"}
+	} else if f.Type == "shared_v4" {
+		r.Type = types.String{Value: "v4"}
 	}
-	r.Private = types.Bool{Value: f.Type == graphql.IPAddressTypePrivateV6 || isPrivate(f.Address)}
 }
 
 func (ir flyIpResource) Metadata(_ context.Context, _ resource.MetadataRequest, resp *resource.MetadataResponse) {
