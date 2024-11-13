@@ -117,8 +117,6 @@ func (a deployTokenResource) Create(ctx context.Context, req resource.CreateRequ
 
 func (a deployTokenResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	// limitedAccessTokens appears to still be unimplemented on fly.io's server, so this is a no-op for now
-	return
-
 	var state deployTokenResourceModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
@@ -149,7 +147,7 @@ func (a deployTokenResource) Delete(ctx context.Context, req resource.DeleteRequ
 		return
 	}
 
-	_, err := graphql.DeleteLimitedAccessToken(ctx, a.gqlClient, state.Token.Value)
+	err := a.apiClient.RevokeLimitedAccessToken(ctx, state.ID.Value)
 	if err != nil {
 		resp.Diagnostics.AddError("failed deleting access token", err.Error())
 		return
