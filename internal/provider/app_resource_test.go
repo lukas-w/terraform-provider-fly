@@ -39,7 +39,6 @@ resource "fly_app" "%s" {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "name", name),
 					resource.TestCheckResourceAttr(resourceName, "org", getTestOrg()),
-					resource.TestCheckResourceAttrSet(resourceName, "machines"),
 					resource.TestCheckResourceAttrSet(resourceName, "orgid"),
 					resource.TestCheckResourceAttrSet(resourceName, "id"),
 					resource.TestCheckResourceAttr(resourceName, "secrets.TEST.value", "123"),

@@ -51,7 +51,6 @@ type flyAppResourceData struct {
 	PreferredRegion types.String `tfsdk:"preferred_region"`
 	AppUrl          types.String `tfsdk:"appurl"`
 	Id              types.String `tfsdk:"id"`
-	Machines        types.Bool   `tfsdk:"machines"`
 	Secrets         secretMap    `tfsdk:"secrets"`
 	RoleId          types.String `tfsdk:"role_id"`
 	EnableConsul    types.Bool   `tfsdk:"enable_consul"`
@@ -77,32 +76,32 @@ func (d *flyAppResourceData) updateFromApi(a graphql.AppFragment) {
 	d.Name = types.String{Value: a.Name}
 	d.Org = types.String{Value: a.Organization.Slug}
 	d.OrgId = types.String{Value: a.Organization.Id}
+	d.PreferredRegion = types.String{Value: a.Autoscaling.PreferredRegion}
 	d.AppUrl = types.String{Value: a.AppUrl}
 	d.Id = types.String{Value: a.Id}
-	if a.PlatformVersion != "" {
-		d.Machines = types.Bool{Value: a.PlatformVersion == graphql.PlatformVersionEnumMachines}
-	}
 	if a.Role != nil && a.Role.GetName() != "" {
 		d.RoleId = types.String{Value: a.Role.GetName()}
 	} else {
 		d.RoleId = types.String{Null: true}
 	}
-	d.PreferredRegion = types.String{Value: a.Autoscaling.PreferredRegion}
 }
 
 func (d *flyAppResourceData) updateSecretsFromApi(a graphql.AppFragment) {
 	for k := range d.Secrets {
 		d.updateSecretFromApi(k, a)
 	}
-	hasConsul := false
+	if hasSecret(a, ConsulUrlEnv) {
+		d.EnableConsul = types.Bool{Value: true}
+	}
+}
+
+func hasSecret(a graphql.AppFragment, name string) bool {
 	for _, s := range a.Secrets {
-		if s.Name == ConsulUrlEnv {
-			hasConsul = true
+		if s.Name == name {
+			return true
 		}
 	}
-	if !hasConsul {
-		d.EnableConsul = types.Bool{Value: false}
-	}
+	return false
 }
 
 func (d *flyAppResourceData) updateSecretFromApi(name string, a graphql.AppFragment) {
@@ -115,7 +114,7 @@ func (d *flyAppResourceData) updateSecretFromApi(name string, a graphql.AppFragm
 			d.Secrets[name] = appSecret{
 				Digest:    types.String{Value: as.Digest},
 				CreatedAt: types.String{Value: as.CreatedAt.Format(time.RFC3339)},
-				Value:     types.String{Unknown: true},
+				Value:     types.String{Null: true},
 			}
 		}
 		return
@@ -145,7 +144,7 @@ func (r flyAppResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnosti
 	}
 
 	return tfsdk.Schema{
-		Version:             2,
+		Version:             3,
 		MarkdownDescription: "Fly app resource",
 		Attributes: map[string]tfsdk.Attribute{
 			"name": {
@@ -165,16 +164,6 @@ func (r flyAppResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnosti
 				Computed:      true,
 				Type:          types.StringType,
 				PlanModifiers: []tfsdk.AttributePlanModifier{resource.RequiresReplace()},
-			},
-			"machines": {
-				Optional:            true,
-				Computed:            true,
-				MarkdownDescription: "Use the machines platform",
-				Type:                types.BoolType,
-				PlanModifiers: []tfsdk.AttributePlanModifier{
-					resource.RequiresReplace(),
-					modifiers.Default(types.Bool{Value: false}),
-				},
 			},
 			"secrets": {
 				Optional:    true,
@@ -278,7 +267,6 @@ func (r flyAppResource) Create(ctx context.Context, req resource.CreateRequest, 
 	createAppInput := graphql.CreateAppInput{
 		Name:           data.Name.Value,
 		OrganizationId: data.OrgId.Value,
-		Machines:       data.Machines.Value,
 		Runtime:        graphql.RuntimeTypeFirecracker,
 		AppRoleId:      data.RoleId.Value,
 	}
@@ -406,8 +394,6 @@ func (r flyAppResource) Update(ctx context.Context, req resource.UpdateRequest, 
 			return
 		}
 	}
-
-	state.Machines = plan.Machines
 
 	if plan.EnableConsul.Equal(types.Bool{Value: true}) {
 		resp.Diagnostics.Append(r.enableConsul(ctx, &state, &resp.State)...)
