@@ -44,7 +44,7 @@ func (r flyAppResource) UpgradeState(ctx context.Context) map[int64]resource.Sta
 			StateUpgrader: func(ctx context.Context, req resource.UpgradeStateRequest, resp *resource.UpgradeStateResponse) {
 				var data flyAppResourceData
 				resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
-				data.EnableConsul = types.Bool{Null: true}
+				data.EnableConsul = types.BoolNull()
 				resp.Diagnostics.Append(resp.State.Set(ctx, data)...)
 			},
 		},

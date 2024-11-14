@@ -67,22 +67,22 @@ func (d *flyAppResourceData) setSecret(name string, secret appSecret) {
 func (d *flyAppResourceData) secretValues() map[string]string {
 	values := make(map[string]string, len(d.Secrets))
 	for k, v := range d.Secrets {
-		values[k] = v.Value.Value
+		values[k] = v.Value.ValueString()
 	}
 	return values
 }
 
 func (d *flyAppResourceData) updateFromApi(a graphql.AppFragment) {
-	d.Name = types.String{Value: a.Name}
-	d.Org = types.String{Value: a.Organization.Slug}
-	d.OrgId = types.String{Value: a.Organization.Id}
-	d.PreferredRegion = types.String{Value: a.Autoscaling.PreferredRegion}
-	d.AppUrl = types.String{Value: a.AppUrl}
-	d.Id = types.String{Value: a.Id}
+	d.Name = types.StringValue(a.Name)
+	d.Org = types.StringValue(a.Organization.Slug)
+	d.OrgId = types.StringValue(a.Organization.Id)
+	d.PreferredRegion = types.StringValue(a.Autoscaling.PreferredRegion)
+	d.AppUrl = types.StringValue(a.AppUrl)
+	d.Id = types.StringValue(a.Id)
 	if a.Role != nil && a.Role.GetName() != "" {
-		d.RoleId = types.String{Value: a.Role.GetName()}
+		d.RoleId = types.StringValue(a.Role.GetName())
 	} else {
-		d.RoleId = types.String{Null: true}
+		d.RoleId = types.StringNull()
 	}
 }
 
@@ -91,7 +91,7 @@ func (d *flyAppResourceData) updateSecretsFromApi(a graphql.AppFragment) {
 		d.updateSecretFromApi(k, a)
 	}
 	if hasSecret(a, ConsulUrlEnv) {
-		d.EnableConsul = types.Bool{Value: true}
+		d.EnableConsul = types.BoolValue(true)
 	}
 }
 
@@ -110,11 +110,11 @@ func (d *flyAppResourceData) updateSecretFromApi(name string, a graphql.AppFragm
 		if as.Name != name {
 			continue
 		}
-		if as.Digest != s.Digest.Value || as.CreatedAt.Format(time.RFC3339) != s.CreatedAt.Value {
+		if as.Digest != s.Digest.ValueString() || as.CreatedAt.Format(time.RFC3339) != s.CreatedAt.ValueString() {
 			d.Secrets[name] = appSecret{
-				Digest:    types.String{Value: as.Digest},
-				CreatedAt: types.String{Value: as.CreatedAt.Format(time.RFC3339)},
-				Value:     types.String{Null: true},
+				Digest:    types.StringValue(as.Digest),
+				CreatedAt: types.StringValue(as.CreatedAt.Format(time.RFC3339)),
+				Value:     types.StringNull(),
 			}
 		}
 		return
@@ -208,7 +208,7 @@ func (r flyAppResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnosti
 				Type:     types.StringType,
 				Optional: true,
 				PlanModifiers: []tfsdk.AttributePlanModifier{
-					modifiers.Default(types.String{Null: true}),
+					modifiers.Default(types.StringNull()),
 					resource.RequiresReplace(),
 				},
 			},
@@ -217,13 +217,13 @@ func (r flyAppResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnosti
 				Optional: true,
 				Computed: true,
 				PlanModifiers: []tfsdk.AttributePlanModifier{
-					modifiers.Default(types.Bool{Value: false}),
+					modifiers.Default(types.BoolValue(false)),
 					resource.RequiresReplaceIf(
 						func(ctx context.Context, state, config attr.Value, path path.Path) (replace bool, diags diag.Diagnostics) {
 							var before, after types.Bool
 							diags.Append(tfsdk.ValueAs(ctx, state, &before)...)
 							diags.Append(tfsdk.ValueAs(ctx, config, &after)...)
-							return before.Equal(types.Bool{Value: true}) && after.Equal(types.Bool{Value: false}), diags
+							return before.Equal(types.BoolValue(true)) && after.Equal(types.BoolValue(false)), diags
 						},
 						"consul cannot be disabled after it was enabled",
 						"consul cannot be disabled after it was enabled",
@@ -261,17 +261,17 @@ func (r flyAppResource) Create(ctx context.Context, req resource.CreateRequest, 
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	data.Org.Value = org.Name
-	data.OrgId.Value = org.ID
+	data.Org = types.StringValue(org.Name)
+	data.OrgId = types.StringValue(org.ID)
 
 	createAppInput := graphql.CreateAppInput{
-		Name:           data.Name.Value,
-		OrganizationId: data.OrgId.Value,
+		Name:           data.Name.ValueString(),
+		OrganizationId: data.OrgId.ValueString(),
 		Runtime:        graphql.RuntimeTypeFirecracker,
-		AppRoleId:      data.RoleId.Value,
+		AppRoleId:      data.RoleId.ValueString(),
 	}
 	if !data.PreferredRegion.IsNull() {
-		createAppInput.PreferredRegion = data.PreferredRegion.Value
+		createAppInput.PreferredRegion = data.PreferredRegion.ValueString()
 	}
 	mresp, err := graphql.CreateAppMutation(context.Background(), r.gqlClient, createAppInput)
 	if err != nil {
@@ -285,13 +285,13 @@ func (r flyAppResource) Create(ctx context.Context, req resource.CreateRequest, 
 		return
 	}
 
-	if data.EnableConsul.Equal(types.Bool{Value: true}) {
+	if data.EnableConsul.Equal(types.BoolValue(true)) {
 		resp.Diagnostics.Append(r.enableConsul(ctx, &data, &resp.State)...)
 		if resp.Diagnostics.HasError() {
 			return
 		}
 	} else {
-		data.ConsulUrl = types.String{Null: true}
+		data.ConsulUrl = types.StringNull()
 	}
 
 	if len(data.Secrets) > 0 {
@@ -305,14 +305,14 @@ func (r flyAppResource) Create(ctx context.Context, req resource.CreateRequest, 
 }
 
 func (r flyAppResource) enableConsul(ctx context.Context, data *flyAppResourceData, state *tfsdk.State) (diags diag.Diagnostics) {
-	consulPayload, err := r.apiClient.EnablePostgresConsul(ctx, data.Name.Value)
+	consulPayload, err := r.apiClient.EnablePostgresConsul(ctx, data.Name.ValueString())
 	if err != nil {
 		diags.AddError("EnablePostgresConsul failed", err.Error())
 		return
 	}
 
 	_, err = graphql.SetSecrets(ctx, r.gqlClient, graphql.SetSecretsInput{
-		AppId: data.Name.Value,
+		AppId: data.Name.ValueString(),
 		Secrets: []graphql.SecretInput{
 			{Key: ConsulUrlEnv, Value: consulPayload.ConsulURL},
 		},
@@ -325,8 +325,8 @@ func (r flyAppResource) enableConsul(ctx context.Context, data *flyAppResourceDa
 		return
 	}
 
-	data.EnableConsul = types.Bool{Value: true}
-	data.ConsulUrl = types.String{Value: consulPayload.ConsulURL}
+	data.EnableConsul = types.BoolValue(true)
+	data.ConsulUrl = types.StringValue(consulPayload.ConsulURL)
 	diags.Append(state.Set(ctx, &data)...)
 	return
 }
@@ -341,7 +341,7 @@ func (r flyAppResource) Read(ctx context.Context, req resource.ReadRequest, resp
 		return
 	}
 
-	query, err := graphql.GetApp(context.Background(), r.gqlClient, state.Name.Value)
+	query, err := graphql.GetApp(context.Background(), r.gqlClient, state.Name.ValueString())
 	var errList gqlerror.List
 	if errors.As(err, &errList) {
 		for _, err := range errList {
@@ -382,12 +382,12 @@ func (r flyAppResource) Update(ctx context.Context, req resource.UpdateRequest, 
 		if resp.Diagnostics.HasError() {
 			return
 		}
-		app, err := r.apiClient.MoveApp(ctx, state.Name.Value, org.ID)
+		app, err := r.apiClient.MoveApp(ctx, state.Name.ValueString(), org.ID)
 		if err != nil {
 			resp.Diagnostics.AddError("Error moving app", err.Error())
 		} else {
-			state.Org = types.String{Value: app.Organization.Slug}
-			state.Id = types.String{Value: app.Organization.ID}
+			state.Org = types.StringValue(app.Organization.Slug)
+			state.Id = types.StringValue(app.Organization.ID)
 			resp.Diagnostics.Append(resp.State.Set(ctx, state)...)
 		}
 		if resp.Diagnostics.HasError() {
@@ -395,14 +395,14 @@ func (r flyAppResource) Update(ctx context.Context, req resource.UpdateRequest, 
 		}
 	}
 
-	if plan.EnableConsul.Equal(types.Bool{Value: true}) {
+	if plan.EnableConsul.Equal(types.BoolValue(true)) {
 		resp.Diagnostics.Append(r.enableConsul(ctx, &state, &resp.State)...)
 		if resp.Diagnostics.HasError() {
 			return
 		}
 	} else {
 		state.EnableConsul = plan.EnableConsul
-		state.ConsulUrl = types.String{Null: true}
+		state.ConsulUrl = types.StringNull()
 	}
 
 	// Unset secrets that were removed from config
@@ -414,7 +414,7 @@ func (r flyAppResource) Update(ctx context.Context, req resource.UpdateRequest, 
 		}
 	}
 	if len(removedSecrets) > 0 {
-		_, err := r.apiClient.UnsetSecrets(ctx, state.Name.Value, removedSecrets)
+		_, err := r.apiClient.UnsetSecrets(ctx, state.Name.ValueString(), removedSecrets)
 		if err != nil {
 			resp.Diagnostics.AddError("UnsetSecrets failed", err.Error())
 		} else {
@@ -451,7 +451,7 @@ func (r flyAppResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 	diags := req.State.Get(ctx, &data)
 	resp.Diagnostics.Append(diags...)
 
-	err := r.apiClient.DeleteApp(ctx, data.Name.Value)
+	err := r.apiClient.DeleteApp(ctx, data.Name.ValueString())
 	var errList gqlerror.List
 	if errors.As(err, &errList) {
 		for _, err := range errList {
@@ -471,10 +471,10 @@ func (r flyAppResource) resolveOrganization(ctx context.Context, slug types.Stri
 	if slug.IsUnknown() || slug.IsNull() {
 		org, err = utils.GetDefaultOrg(ctx, r.apiClient)
 	} else {
-		org, err = r.apiClient.GetOrganizationBySlug(ctx, slug.Value)
+		org, err = r.apiClient.GetOrganizationBySlug(ctx, slug.ValueString())
 	}
 	if err != nil {
-		diags.AddError(fmt.Sprintf("Could not resolve organization %s", slug.Value), err.Error())
+		diags.AddError(fmt.Sprintf("Could not resolve organization %s", slug.ValueString()), err.Error())
 	}
 	return
 }
@@ -487,13 +487,13 @@ func (r flyAppResource) setSecrets(ctx context.Context, data flyAppResourceData,
 	for k, v := range secrets {
 		inputs[i] = graphql.SecretInput{
 			Key:   k,
-			Value: v.Value.Value,
+			Value: v.Value.ValueString(),
 		}
 		i++
 	}
 
 	resp, err := graphql.SetSecrets(ctx, r.gqlClient, graphql.SetSecretsInput{
-		AppId:      data.Name.Value,
+		AppId:      data.Name.ValueString(),
 		Secrets:    inputs,
 		ReplaceAll: false,
 	})
@@ -504,7 +504,7 @@ func (r flyAppResource) setSecrets(ctx context.Context, data flyAppResourceData,
 			// Secrets may have been added outside of Terraform. To prevent unknown value errors, we need to fetch
 			// digest and createdAt attributes for secrets that don't have those values missing in state
 			diags.AddWarning("State may have drifted", "Secrets may have been added or changed outside of Terraform. Refreshing secret state, you may need to re-apply your Terraform config.")
-			r.getSecretComputedValues(ctx, data.Name.Value, secrets, diags)
+			r.getSecretComputedValues(ctx, data.Name.ValueString(), secrets, diags)
 		} else {
 			diags.AddError("SetSecrets errored", err.Error())
 		}
@@ -517,8 +517,8 @@ func (r flyAppResource) setSecrets(ctx context.Context, data flyAppResourceData,
 		}
 		secrets[s.Name] = appSecret{
 			Value:     secrets[s.Name].Value,
-			Digest:    types.String{Value: s.Digest},
-			CreatedAt: types.String{Value: s.CreatedAt.Format(time.RFC3339)},
+			Digest:    types.StringValue(s.Digest),
+			CreatedAt: types.StringValue(s.CreatedAt.Format(time.RFC3339)),
 		}
 	}
 }
@@ -532,8 +532,8 @@ func (r flyAppResource) getSecretComputedValues(ctx context.Context, appName str
 		if s, ok := secrets[as.Name]; ok {
 			secrets[as.Name] = appSecret{
 				Value:     s.Value,
-				Digest:    types.String{Value: as.Digest},
-				CreatedAt: types.String{Value: as.CreatedAt.Format(time.RFC3339)},
+				Digest:    types.StringValue(as.Digest),
+				CreatedAt: types.StringValue(as.CreatedAt.Format(time.RFC3339)),
 			}
 		}
 	}

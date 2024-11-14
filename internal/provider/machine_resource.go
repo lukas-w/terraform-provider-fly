@@ -38,8 +38,8 @@ func (d *flyMachineResourceData) makeMachineRequest(ctx context.Context, diags *
 		return nil
 	}
 	return &fly.LaunchMachineInput{
-		Name:   d.Name.Value,
-		Region: d.Region.Value,
+		Name:   d.Name.ValueString(),
+		Region: d.Region.ValueString(),
 		Config: conf,
 	}
 }
@@ -128,14 +128,14 @@ func (flyMachineResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnos
 								MarkdownDescription: "cpu type",
 								Required:            true,
 								Type:                types.StringType,
-								PlanModifiers:       []tfsdk.AttributePlanModifier{modifiers.Default(types.String{Value: string(CpuKindShared)})},
+								PlanModifiers:       []tfsdk.AttributePlanModifier{modifiers.Default(types.StringValue(string(CpuKindShared)))},
 							},
 							"cpus": {
 								MarkdownDescription: "cpu count",
 								Required:            true,
 								Type:                types.Int64Type,
 								PlanModifiers: []tfsdk.AttributePlanModifier{
-									modifiers.Default(types.Int64{Value: 1}),
+									modifiers.Default(types.Int64Value(1)),
 								},
 								Validators: []tfsdk.AttributeValidator{int64validator.AtLeast(1)},
 							},
@@ -143,15 +143,12 @@ func (flyMachineResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnos
 								MarkdownDescription: "memory mb",
 								Required:            true,
 								Type:                types.Int64Type,
-								PlanModifiers:       []tfsdk.AttributePlanModifier{modifiers.Default(types.Int64{Value: 256})},
+								PlanModifiers:       []tfsdk.AttributePlanModifier{modifiers.Default(types.Int64Value(256))},
 							},
 							"kernel_args": {
-								Optional: true,
-								Type:     types.ListType{ElemType: types.StringType},
-								PlanModifiers: []tfsdk.AttributePlanModifier{modifiers.Default(types.List{
-									Null:     true,
-									ElemType: types.StringType,
-								})},
+								Optional:      true,
+								Type:          types.ListType{ElemType: types.StringType},
+								PlanModifiers: []tfsdk.AttributePlanModifier{modifiers.Default(types.ListNull(types.StringType))},
 							},
 						}),
 						PlanModifiers: []tfsdk.AttributePlanModifier{resource.UseStateForUnknown()},
@@ -162,7 +159,9 @@ func (flyMachineResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnos
 						Computed:            true,
 						Type:                types.MapType{ElemType: types.StringType},
 						PlanModifiers: []tfsdk.AttributePlanModifier{
-							modifiers.Default(types.Map{ElemType: types.StringType, Elems: map[string]attr.Value{}}),
+							modifiers.Default(
+								types.MapValueMust(types.StringType, map[string]attr.Value{}),
+							),
 							resource.UseStateForUnknown(),
 						},
 					},
@@ -217,7 +216,7 @@ func (flyMachineResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnos
 										Type:          types.BoolType,
 										Optional:      true,
 										Computed:      true,
-										PlanModifiers: []tfsdk.AttributePlanModifier{modifiers.Default(types.Bool{Value: false})},
+										PlanModifiers: []tfsdk.AttributePlanModifier{modifiers.Default(types.BoolValue(false))},
 									},
 								}),
 							},
@@ -279,13 +278,12 @@ func (flyMachineResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnos
 					"restart": {
 						Optional: true,
 						Computed: true,
-						PlanModifiers: []tfsdk.AttributePlanModifier{modifiers.Default(types.Object{
-							AttrTypes: map[string]attr.Type{
+						PlanModifiers: []tfsdk.AttributePlanModifier{modifiers.Default(types.ObjectNull(
+							map[string]attr.Type{
 								"policy":      types.StringType,
 								"max_retries": types.Int64Type,
 							},
-							Null: true,
-						})},
+						))},
 						Attributes: tfsdk.SingleNestedAttributes(map[string]tfsdk.Attribute{
 							"policy": {
 								Required:            true,
@@ -350,10 +348,12 @@ func (flyMachineResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnos
 						}),
 					},
 					"metadata": {
-						Optional:      true,
-						Computed:      true,
-						Type:          types.MapType{ElemType: types.StringType},
-						PlanModifiers: []tfsdk.AttributePlanModifier{modifiers.Default(types.Map{ElemType: types.StringType, Elems: map[string]attr.Value{}})},
+						Optional: true,
+						Computed: true,
+						Type:     types.MapType{ElemType: types.StringType},
+						PlanModifiers: []tfsdk.AttributePlanModifier{modifiers.Default(
+							types.MapValueMust(types.StringType, map[string]attr.Value{}),
+						)},
 					},
 				}),
 			},
@@ -362,14 +362,14 @@ func (flyMachineResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnos
 				Computed:      true,
 				Type:          types.BoolType,
 				Description:   "Wait for machine to start up",
-				PlanModifiers: []tfsdk.AttributePlanModifier{modifiers.Default(types.Bool{Value: true})},
+				PlanModifiers: []tfsdk.AttributePlanModifier{modifiers.Default(types.BoolValue(true))},
 			},
 			"wait_for_checks": {
 				Optional:      true,
 				Computed:      true,
 				Type:          types.BoolType,
 				Description:   "Wait for machine's health checks to pass",
-				PlanModifiers: []tfsdk.AttributePlanModifier{modifiers.Default(types.Bool{Value: false})},
+				PlanModifiers: []tfsdk.AttributePlanModifier{modifiers.Default(types.BoolValue(false))},
 			},
 		},
 	}, nil
@@ -382,27 +382,27 @@ func TfServicesToServices(input []TfService) []fly.MachineService {
 		for _, j := range s.Ports {
 			var handlers []string
 			for _, k := range j.Handlers {
-				handlers = append(handlers, k.Value)
+				handlers = append(handlers, k.ValueString())
 			}
-			port := int(j.Port.Value)
+			port := int(j.Port.ValueInt64())
 			ports = append(ports, fly.MachinePort{
 				Port:       &port,
 				Handlers:   handlers,
-				ForceHTTPS: j.ForceHttps.Value,
+				ForceHTTPS: j.ForceHttps.ValueBool(),
 			})
 		}
 		var concurrency *fly.MachineServiceConcurrency
 		if s.Concurrency != nil {
 			concurrency = &fly.MachineServiceConcurrency{
-				Type:      s.Concurrency.Type.Value,
-				HardLimit: int(s.Concurrency.HardLimit.Value),
-				SoftLimit: int(s.Concurrency.SoftLimit.Value),
+				Type:      s.Concurrency.Type.ValueString(),
+				HardLimit: int(s.Concurrency.HardLimit.ValueInt64()),
+				SoftLimit: int(s.Concurrency.SoftLimit.ValueInt64()),
 			}
 		}
 		services = append(services, fly.MachineService{
 			Ports:        ports,
-			Protocol:     s.Protocol.Value,
-			InternalPort: int(s.InternalPort.Value),
+			Protocol:     s.Protocol.ValueString(),
+			InternalPort: int(s.InternalPort.ValueInt64()),
 			Concurrency:  concurrency,
 		})
 	}
@@ -416,26 +416,26 @@ func ServicesToTfServices(input []fly.MachineService) []TfService {
 		for _, j := range s.Ports {
 			var handlers []types.String
 			for _, k := range j.Handlers {
-				handlers = append(handlers, types.String{Value: k})
+				handlers = append(handlers, types.StringValue(k))
 			}
 			tfports = append(tfports, TfPort{
-				Port:       types.Int64{Value: int64(*j.Port)},
+				Port:       types.Int64Value(int64(*j.Port)),
 				Handlers:   handlers,
-				ForceHttps: types.Bool{Value: j.ForceHTTPS},
+				ForceHttps: types.BoolValue(j.ForceHTTPS),
 			})
 		}
 		var concurrency *TfServiceConcurrency
 		if s.Concurrency != nil {
 			concurrency = &TfServiceConcurrency{
-				Type:      types.String{Value: s.Concurrency.Type},
-				HardLimit: types.Int64{Value: int64(s.Concurrency.HardLimit)},
-				SoftLimit: types.Int64{Value: int64(s.Concurrency.SoftLimit)},
+				Type:      types.StringValue(s.Concurrency.Type),
+				HardLimit: types.Int64Value(int64(s.Concurrency.HardLimit)),
+				SoftLimit: types.Int64Value(int64(s.Concurrency.SoftLimit)),
 			}
 		}
 		tfservices = append(tfservices, TfService{
 			Ports:        tfports,
-			Protocol:     types.String{Value: s.Protocol},
-			InternalPort: types.Int64{Value: int64(s.InternalPort)},
+			Protocol:     types.StringValue(s.Protocol),
+			InternalPort: types.Int64Value(int64(s.InternalPort)),
 			Concurrency:  concurrency,
 		})
 	}
@@ -450,7 +450,7 @@ func (mr flyMachineResource) Create(ctx context.Context, req resource.CreateRequ
 		return
 	}
 
-	client := mr.getFlapsClient(ctx, data.App.Value, &resp.Diagnostics)
+	client := mr.getFlapsClient(ctx, data.App.ValueString(), &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -481,13 +481,13 @@ func (mr flyMachineResource) Create(ctx context.Context, req resource.CreateRequ
 		return
 	}
 
-	if data.Wait.Equal(types.Bool{Value: true}) {
+	if data.Wait.Equal(types.BoolValue(true)) {
 		err = client.Wait(ctx, machine, fly.MachineStateStarted, 5*time.Minute)
 		if err != nil {
 			//FIXME(?): For now we just assume that the orchestrator is in fact going to faithfully execute our request
 			tflog.Info(ctx, "Waiting errored")
 		}
-		if data.WaitForChecks.Equal(types.Bool{Value: true}) {
+		if data.WaitForChecks.Equal(types.BoolValue(true)) {
 			resp.Diagnostics.Append(mr.WaitForChecks(ctx, data, &resp.State)...)
 			if resp.Diagnostics.HasError() {
 				return
@@ -502,12 +502,12 @@ func (mr flyMachineResource) Read(ctx context.Context, req resource.ReadRequest,
 	var data flyMachineResourceData
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 
-	flaps := mr.getFlapsClient(ctx, data.App.Value, &resp.Diagnostics)
+	flaps := mr.getFlapsClient(ctx, data.App.ValueString(), &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	machine, err := flaps.Get(ctx, data.Id.Value)
+	machine, err := flaps.Get(ctx, data.Id.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to get machine", err.Error())
 		return
@@ -525,7 +525,7 @@ func (mr flyMachineResource) Update(ctx context.Context, req resource.UpdateRequ
 		return
 	}
 
-	client := mr.getFlapsClient(ctx, state.App.Value, &resp.Diagnostics)
+	client := mr.getFlapsClient(ctx, state.App.ValueString(), &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -538,10 +538,10 @@ func (mr flyMachineResource) Update(ctx context.Context, req resource.UpdateRequ
 		resp.Diagnostics.AddError("error creating machine request", "Request is nil. This is a bug.")
 		return
 	}
-	mReq.ID = state.Id.Value
+	mReq.ID = state.Id.ValueString()
 
 	ttl := 30
-	lease, err := client.AcquireLease(ctx, state.Id.Value, &ttl)
+	lease, err := client.AcquireLease(ctx, state.Id.ValueString(), &ttl)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to acquire lease", err.Error())
 		return
@@ -554,12 +554,12 @@ func (mr flyMachineResource) Update(ctx context.Context, req resource.UpdateRequ
 	}
 
 	resp.Diagnostics.Append(state.updateFromApiData(*machine)...)
-	if plan.Wait.Equal(types.Bool{Value: true}) {
+	if plan.Wait.Equal(types.BoolValue(true)) {
 		err = client.Wait(ctx, machine, fly.MachineStateStarted, 5*time.Minute)
 		if err != nil {
 			tflog.Info(ctx, "Waiting errored")
 		}
-		if plan.WaitForChecks.Equal(types.Bool{Value: true}) {
+		if plan.WaitForChecks.Equal(types.BoolValue(true)) {
 			resp.Diagnostics.Append(mr.WaitForChecks(ctx, state, &resp.State)...)
 			if resp.Diagnostics.HasError() {
 				return
@@ -575,12 +575,12 @@ func (mr flyMachineResource) Delete(ctx context.Context, req resource.DeleteRequ
 	var data flyMachineResourceData
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 
-	client := mr.getFlapsClient(ctx, data.App.Value, &resp.Diagnostics)
+	client := mr.getFlapsClient(ctx, data.App.ValueString(), &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	resp.Diagnostics.Append(stopAndDestroyMachine(ctx, *client, data.Id.Value)...)
+	resp.Diagnostics.Append(stopAndDestroyMachine(ctx, *client, data.Id.ValueString())...)
 }
 
 func stopAndDestroyMachine(ctx context.Context, client flaps.Client, id string) (diag diag.Diagnostics) {
@@ -673,7 +673,7 @@ func (mr flyMachineResource) WaitForChecks(ctx context.Context, data flyMachineR
 	timeout := 5 * time.Minute
 	maxErrors := 3
 
-	client := mr.getFlapsClient(ctx, data.App.Value, &diags)
+	client := mr.getFlapsClient(ctx, data.App.ValueString(), &diags)
 	if diags.HasError() {
 		return
 	}
@@ -696,7 +696,7 @@ func (mr flyMachineResource) WaitForChecks(ctx context.Context, data flyMachineR
 		case <-time.After(interval):
 		}
 
-		machine, err = client.Get(ctx, data.Id.Value)
+		machine, err = client.Get(ctx, data.Id.ValueString())
 		if err != nil {
 			tflog.Error(ctx, fmt.Sprintf("ReadMachine failed while waiting for checks: %v", err.Error()))
 			numErrors++

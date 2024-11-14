@@ -89,7 +89,7 @@ func (d appDataSource) Read(ctx context.Context, req datasource.ReadRequest, res
 		return
 	}
 
-	appName := data.Name.Value
+	appName := data.Name.ValueString()
 
 	queryresp, err := graphql.GetFullApp(context.Background(), d.gqlClient, appName)
 	if err != nil {
@@ -97,13 +97,13 @@ func (d appDataSource) Read(ctx context.Context, req datasource.ReadRequest, res
 	}
 
 	a := appDataSourceOutput{
-		Name:           types.String{Value: appName},
-		AppUrl:         types.String{Value: string(queryresp.App.AppUrl)},
-		Hostname:       types.String{Value: string(queryresp.App.Hostname)},
-		Id:             types.String{Value: string(queryresp.App.Id)},
-		Status:         types.String{Value: string(queryresp.App.Status)},
-		Deployed:       types.Bool{Value: queryresp.App.Deployed},
-		Currentrelease: types.String{Value: queryresp.App.CurrentRelease.Id},
+		Name:           types.StringValue(appName),
+		AppUrl:         types.StringValue(queryresp.App.AppUrl),
+		Hostname:       types.StringValue(queryresp.App.Hostname),
+		Id:             types.StringValue(queryresp.App.Id),
+		Status:         types.StringValue(queryresp.App.Status),
+		Deployed:       types.BoolValue(queryresp.App.Deployed),
+		Currentrelease: types.StringValue(queryresp.App.CurrentRelease.Id),
 		Healthchecks:   []string{},
 		Ipaddresses:    []string{},
 	}

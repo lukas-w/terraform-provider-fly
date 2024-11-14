@@ -69,7 +69,7 @@ func (r redisResource) GetSchema(ctx context.Context) (tfsdk.Schema, diag.Diagno
 				Optional: true,
 				Computed: true,
 				PlanModifiers: []tfsdk.AttributePlanModifier{
-					modifiers.Default(types.Set{ElemType: types.StringType, Elems: []attr.Value{}}),
+					modifiers.Default(types.SetValueMust(types.StringType, []attr.Value{})),
 				},
 			},
 			"eviction": {
@@ -78,7 +78,7 @@ func (r redisResource) GetSchema(ctx context.Context) (tfsdk.Schema, diag.Diagno
 				Computed: true,
 				PlanModifiers: []tfsdk.AttributePlanModifier{
 					resource.RequiresReplace(),
-					modifiers.Default(types.Bool{Value: false}),
+					modifiers.Default(types.BoolValue(false)),
 				},
 			},
 			"public_url": {
@@ -112,14 +112,14 @@ func (r redisResource) Create(ctx context.Context, req resource.CreateRequest, r
 	}
 
 	// Resolve organization
-	org, err := r.apiClient.GetOrganizationBySlug(ctx, data.Org.Value)
+	org, err := r.apiClient.GetOrganizationBySlug(ctx, data.Org.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Error resolving organization", err.Error())
 		return
 	}
 
 	// Resolve plan
-	planId := r.resolvePlan(ctx, data.Plan.Value, &resp.Diagnostics)
+	planId := r.resolvePlan(ctx, data.Plan.ValueString(), &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -128,12 +128,12 @@ func (r redisResource) Create(ctx context.Context, req resource.CreateRequest, r
 		gql.CreateAddOnInput{
 			Type:           gql.AddOnTypeUpstashRedis,
 			OrganizationId: org.ID,
-			PrimaryRegion:  data.PrimaryRegion.Value,
-			Name:           data.Name.Value,
+			PrimaryRegion:  data.PrimaryRegion.ValueString(),
+			Name:           data.Name.ValueString(),
 			PlanId:         planId,
 			ReadRegions:    readRegions,
 			Options: map[string]interface{}{
-				"eviction": data.Eviction.Value,
+				"eviction": data.Eviction.ValueBool(),
 			},
 		},
 	)
@@ -141,8 +141,8 @@ func (r redisResource) Create(ctx context.Context, req resource.CreateRequest, r
 		resp.Diagnostics.AddError("Error creating addon", err.Error())
 		return
 	}
-	data.Name = types.String{Value: mresp.CreateAddOn.AddOn.Name}
-	data.PublicUrl = types.String{Value: mresp.CreateAddOn.AddOn.PublicUrl}
+	data.Name = types.StringValue(mresp.CreateAddOn.AddOn.Name)
+	data.PublicUrl = types.StringValue(mresp.CreateAddOn.AddOn.PublicUrl)
 
 	r.get(ctx, &data, &resp.Diagnostics)
 	resp.Diagnostics.Append(resp.State.Set(ctx, data)...)
@@ -176,8 +176,9 @@ func (r redisResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 	resp.Diagnostics.Append(req.State.Set(ctx, data)...)
 }
 
-func (r redisResource) get(ctx context.Context, data *addonResourceModel, diag *diag.Diagnostics) bool {
-	qresp, err := gql.GetAddOn(ctx, r.gqlClient, data.Name.Value, string(gql.AddOnTypeUpstashRedis))
+func (r redisResource) get(ctx context.Context, data *addonResourceModel, diags *diag.Diagnostics) bool {
+	var d diag.Diagnostics
+	qresp, err := gql.GetAddOn(ctx, r.gqlClient, data.Name.ValueString(), string(gql.AddOnTypeUpstashRedis))
 	if err != nil {
 		var errList gqlerror.List
 		if errors.As(err, &errList) {
@@ -187,20 +188,22 @@ func (r redisResource) get(ctx context.Context, data *addonResourceModel, diag *
 				}
 			}
 		}
-		diag.AddError("Error getting addon", err.Error())
+		diags.AddError("Error getting addon", err.Error())
 		return true
 	}
-	data.Name = types.String{Value: qresp.AddOn.Name}
-	data.Org = types.String{Value: qresp.AddOn.Organization.Slug}
-	data.Plan = types.String{Value: qresp.AddOn.AddOnPlan.DisplayName}
-	data.PublicUrl = types.String{Value: qresp.AddOn.PublicUrl}
-	data.PrimaryRegion = types.String{Value: qresp.AddOn.PrimaryRegion}
-	data.ReadRegions = types.Set{ElemType: types.StringType, Elems: make([]attr.Value, len(qresp.AddOn.ReadRegions))}
-	for i, region := range qresp.AddOn.ReadRegions {
-		data.ReadRegions.Elems[i] = types.String{Value: region}
+	data.Name = types.StringValue(qresp.AddOn.Name)
+	data.Org = types.StringValue(qresp.AddOn.Organization.Slug)
+	data.Plan = types.StringValue(qresp.AddOn.AddOnPlan.DisplayName)
+	data.PublicUrl = types.StringValue(qresp.AddOn.PublicUrl)
+	data.PrimaryRegion = types.StringValue(qresp.AddOn.PrimaryRegion)
+	data.ReadRegions, d = types.SetValueFrom(ctx, types.StringType, qresp.AddOn.ReadRegions)
+	diags.Append(d...)
+	if diags.HasError() {
+		return true
 	}
-	data.Password = types.String{Value: qresp.AddOn.Password}
-	data.PrivateIP = types.String{Value: qresp.AddOn.PrivateIp}
+
+	data.Password = types.StringValue(qresp.AddOn.Password)
+	data.PrivateIP = types.StringValue(qresp.AddOn.PrivateIp)
 	return true
 }
 
@@ -212,14 +215,14 @@ func (r redisResource) Update(ctx context.Context, req resource.UpdateRequest, r
 		return
 	}
 
-	planId := r.resolvePlan(ctx, plan.Plan.Value, &resp.Diagnostics)
+	planId := r.resolvePlan(ctx, plan.Plan.ValueString(), &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
 	var readRegions []string
 	resp.Diagnostics.Append(plan.ReadRegions.ElementsAs(ctx, readRegions, false)...)
-	_, err := gql.UpdateAddOn(ctx, r.gqlClient, state.Name.Value, planId, readRegions, map[string]interface{}{}, map[string]interface{}{})
+	_, err := gql.UpdateAddOn(ctx, r.gqlClient, state.Name.ValueString(), planId, readRegions, map[string]interface{}{}, map[string]interface{}{})
 	if err != nil {
 		resp.Diagnostics.AddError("Error updating addon", err.Error())
 		return
@@ -236,7 +239,7 @@ func (r redisResource) Delete(ctx context.Context, req resource.DeleteRequest, r
 		return
 	}
 
-	_, err := gql.DeleteAddOn(ctx, r.gqlClient, data.Name.Value)
+	_, err := gql.DeleteAddOn(ctx, r.gqlClient, data.Name.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Error deleting addon", err.Error())
 		return

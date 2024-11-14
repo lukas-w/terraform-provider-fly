@@ -123,14 +123,14 @@ func (s organizationDataSource) Read(ctx context.Context, req datasource.ReadReq
 
 	variables := make(map[string]interface{})
 	if !data.ID.IsNull() && !data.ID.IsUnknown() {
-		variables["id"] = data.ID.Value
+		variables["id"] = data.ID.ValueString()
 	} else if !data.Slug.IsNull() && !data.Slug.IsUnknown() {
-		variables["slug"] = data.Slug.Value
+		variables["slug"] = data.Slug.ValueString()
 	} else if !data.Name.IsNull() && !data.Name.IsUnknown() {
-		variables["name"] = data.Name.Value
+		variables["name"] = data.Name.ValueString()
 	}
 
-	r, err := graphql.Organization(ctx, s.gqlClient, data.ID.Value, data.Slug.Value, data.Name.Value)
+	r, err := graphql.Organization(ctx, s.gqlClient, data.ID.ValueString(), data.Slug.ValueString(), data.Name.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Error reading organization", err.Error())
 		return
@@ -140,19 +140,19 @@ func (s organizationDataSource) Read(ctx context.Context, req datasource.ReadReq
 		return
 	}
 
-	data.ID = types.String{Value: r.Organization.Id}
-	data.Slug = types.String{Value: r.Organization.Slug}
-	data.Name = types.String{Value: r.Organization.Name}
-	data.Type = types.String{Value: string(r.Organization.Type)}
+	data.ID = types.StringValue(r.Organization.Id)
+	data.Slug = types.StringValue(r.Organization.Slug)
+	data.Name = types.StringValue(r.Organization.Name)
+	data.Type = types.StringValue(string(r.Organization.Type))
 
 	data.Members = make([]orgMember, len(r.Organization.Members.Edges))
 	for i, m := range r.Organization.Members.Edges {
 		data.Members[i] = orgMember{
-			Id:       types.String{Value: m.Node.Id},
-			Name:     types.String{Value: m.Node.Name},
-			Email:    types.String{Value: m.Node.Email},
-			JoinedAt: types.String{Value: m.JoinedAt.Format(time.RFC3339)},
-			Role:     types.String{Value: string(m.Role)},
+			Id:       types.StringValue(m.Node.Id),
+			Name:     types.StringValue(m.Node.Name),
+			Email:    types.StringValue(m.Node.Email),
+			JoinedAt: types.StringValue(m.JoinedAt.Format(time.RFC3339)),
+			Role:     types.StringValue(string(m.Role)),
 		}
 	}
 

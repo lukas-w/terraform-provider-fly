@@ -85,8 +85,8 @@ func (d certDataSource) Read(ctx context.Context, req datasource.ReadRequest, re
 		return
 	}
 
-	hostname := data.Hostname.Value
-	app := data.Appid.Value
+	hostname := data.Hostname.ValueString()
+	app := data.Appid.ValueString()
 
 	query, err := graphql.GetCertificate(context.Background(), d.gqlClient, app, hostname)
 	var errList gqlerror.List
@@ -102,13 +102,13 @@ func (d certDataSource) Read(ctx context.Context, req datasource.ReadRequest, re
 	}
 
 	data = certDataSourceOutput{
-		Id:                        types.String{Value: query.App.Certificate.Id},
-		Appid:                     types.String{Value: data.Appid.Value},
-		Dnsvalidationinstructions: types.String{Value: query.App.Certificate.DnsValidationInstructions},
-		Dnsvalidationhostname:     types.String{Value: query.App.Certificate.DnsValidationHostname},
-		Dnsvalidationtarget:       types.String{Value: query.App.Certificate.DnsValidationTarget},
-		Hostname:                  types.String{Value: query.App.Certificate.Hostname},
-		Check:                     types.Bool{Value: query.App.Certificate.Check},
+		Id:                        types.StringValue(query.App.Certificate.Id),
+		Appid:                     types.StringValue(data.Appid.ValueString()),
+		Dnsvalidationinstructions: types.StringValue(query.App.Certificate.DnsValidationInstructions),
+		Dnsvalidationhostname:     types.StringValue(query.App.Certificate.DnsValidationHostname),
+		Dnsvalidationtarget:       types.StringValue(query.App.Certificate.DnsValidationTarget),
+		Hostname:                  types.StringValue(query.App.Certificate.Hostname),
+		Check:                     types.BoolValue(query.App.Certificate.Check),
 	}
 
 	diags = resp.State.Set(ctx, &data)

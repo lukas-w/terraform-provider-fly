@@ -57,7 +57,7 @@ func (l latestImageTagDataSource) Read(ctx context.Context, req datasource.ReadR
 		resp.Diagnostics.AddError("error in GetLatestImageTag API call", err.Error())
 		return
 	}
-	data.ImageRef = types.String{Value: t}
+	data.ImageRef = types.StringValue(t)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, data)...)
 }

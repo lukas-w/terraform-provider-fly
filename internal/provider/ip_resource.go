@@ -41,20 +41,20 @@ type flyIpResourceData struct {
 }
 
 func (r *flyIpResourceData) fromApi(f graphql.IPAddressFragment) {
-	r.Id = types.String{Value: f.Id}
-	r.Region = types.String{Value: f.Region}
-	r.Address = types.String{Value: f.Address}
-	r.Type = types.String{Value: string(f.Type)}
+	r.Id = types.StringValue(f.Id)
+	r.Region = types.StringValue(f.Region)
+	r.Address = types.StringValue(f.Address)
+	r.Type = types.StringValue(string(f.Type))
 	if f.Type == "private_v6" {
-		r.Type = types.String{Value: "v6"}
-		r.Private = types.Bool{Value: true}
+		r.Type = types.StringValue("v6")
+		r.Private = types.BoolValue(true)
 	} else if f.Type == "v6" {
-		r.Type = types.String{Value: "v6"}
-		r.Private = types.Bool{Value: isPrivate(f.Address)}
+		r.Type = types.StringValue("v6")
+		r.Private = types.BoolValue(isPrivate(f.Address))
 	} else if f.Type == "v4" {
-		r.Type = types.String{Value: "v4"}
+		r.Type = types.StringValue("v4")
 	} else if f.Type == "shared_v4" {
-		r.Type = types.String{Value: "v4"}
+		r.Type = types.StringValue("v4")
 	}
 }
 
@@ -93,7 +93,7 @@ func (flyIpResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics)
 				Type:          types.BoolType,
 				Optional:      true,
 				Computed:      true,
-				PlanModifiers: []tfsdk.AttributePlanModifier{modifiers.Default(types.Bool{Value: false})},
+				PlanModifiers: []tfsdk.AttributePlanModifier{modifiers.Default(types.BoolValue(false))},
 			},
 			"region": {
 				MarkdownDescription: "region",
@@ -101,7 +101,7 @@ func (flyIpResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics)
 				Computed:            true,
 				PlanModifiers: tfsdk.AttributePlanModifiers{
 					resource.RequiresReplace(),
-					modifiers.Default(types.String{Value: "global"}),
+					modifiers.Default(types.StringValue("global")),
 				},
 			},
 		},
@@ -117,22 +117,21 @@ func (ir flyIpResource) Create(ctx context.Context, req resource.CreateRequest, 
 	tflog.Info(ctx, fmt.Sprintf("%+v", data))
 
 	var ipType graphql.IPAddressType
-	if data.Type.Value == "v4" {
+	if data.Type.ValueString() == "v4" {
 		ipType = graphql.IPAddressTypeV4
-	} else if data.Private.Value {
+	} else if data.Private.ValueBool() {
 		ipType = graphql.IPAddressTypePrivateV6
 	} else {
 		ipType = graphql.IPAddressTypeV6
 	}
 
-	q, err := graphql.AllocateIpAddress(context.Background(), ir.gqlClient, data.Appid.Value, data.Region.Value, ipType)
+	q, err := graphql.AllocateIpAddress(context.Background(), ir.gqlClient, data.Appid.ValueString(), data.Region.ValueString(), ipType)
 	tflog.Info(ctx, fmt.Sprintf("query res in create ip: %+v", q))
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to create ip addr", err.Error())
 	}
 
 	data.fromApi(q.AllocateIpAddress.IpAddress)
-	data.Appid = types.String{Value: data.Appid.Value}
 
 	tflog.Info(ctx, fmt.Sprintf("%+v", data))
 
@@ -149,8 +148,8 @@ func (ir flyIpResource) Read(ctx context.Context, req resource.ReadRequest, resp
 	diags := req.State.Get(ctx, &data)
 	resp.Diagnostics.Append(diags...)
 
-	query, err := graphql.IpAddressQuery(context.Background(), ir.gqlClient, data.Id.Value)
-	tflog.Info(ctx, fmt.Sprintf("Query res: for %s %+v", data.Id.Value, query))
+	query, err := graphql.IpAddressQuery(context.Background(), ir.gqlClient, data.Id.ValueString())
+	tflog.Info(ctx, fmt.Sprintf("Query res: for %s %+v", data.Id.ValueString(), query))
 	var errList gqlerror.List
 	if errors.As(err, &errList) {
 		for _, err := range errList {
@@ -184,8 +183,8 @@ func (ir flyIpResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 	diags := req.State.Get(ctx, &data)
 	resp.Diagnostics.Append(diags...)
 
-	if !data.Id.Unknown && !data.Id.Null && data.Id.Value != "" {
-		_, err := graphql.ReleaseIpAddress(context.Background(), ir.gqlClient, data.Id.Value)
+	if data.Id.ValueString() != "" {
+		_, err := graphql.ReleaseIpAddress(context.Background(), ir.gqlClient, data.Id.ValueString())
 		if err != nil {
 			resp.Diagnostics.AddError("Release ip failed", err.Error())
 		}

@@ -6,9 +6,9 @@ toolchain go1.23.2
 
 require (
 	github.com/Khan/genqlient v0.7.1-0.20240819060157-4466fc10e4f3
-	github.com/hashicorp/terraform-plugin-framework v0.14.0
-	github.com/hashicorp/terraform-plugin-framework-validators v0.5.0
-	github.com/hashicorp/terraform-plugin-go v0.14.0
+	github.com/hashicorp/terraform-plugin-framework v0.16.0
+	github.com/hashicorp/terraform-plugin-framework-validators v0.6.0
+	github.com/hashicorp/terraform-plugin-go v0.14.1
 	github.com/hashicorp/terraform-plugin-log v0.7.0
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.22.0
 	github.com/superfly/fly-go v0.1.34
@@ -42,7 +42,7 @@ require (
 	github.com/hashicorp/go-cty v1.4.1-0.20200414143053-d3edf31b6320 // indirect
 	github.com/hashicorp/go-hclog v1.5.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
-	github.com/hashicorp/go-plugin v1.4.5 // indirect
+	github.com/hashicorp/go-plugin v1.4.6 // indirect
 	github.com/hashicorp/go-uuid v1.0.3 // indirect
 	github.com/hashicorp/go-version v1.7.0 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect

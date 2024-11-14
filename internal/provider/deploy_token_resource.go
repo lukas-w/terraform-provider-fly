@@ -21,10 +21,10 @@ type deployTokenResourceModel struct {
 }
 
 func (m *deployTokenResourceModel) updateFromGql(token graphql.LimitedAccessToken) {
-	m.ID = types.String{Value: token.Id}
-	m.Token = types.String{Value: token.Token}
-	m.CreatedAt = types.String{Value: token.CreatedAt.Format(time.RFC3339)}
-	m.ExpiresAt = types.String{Value: token.ExpiresAt.Format(time.RFC3339)}
+	m.ID = types.StringValue(token.Id)
+	m.Token = types.StringValue(token.Token)
+	m.CreatedAt = types.StringValue(token.CreatedAt.Format(time.RFC3339))
+	m.ExpiresAt = types.StringValue(token.ExpiresAt.Format(time.RFC3339))
 }
 
 type deployTokenResource struct {
@@ -92,7 +92,7 @@ func (a deployTokenResource) Create(ctx context.Context, req resource.CreateRequ
 		return
 	}
 
-	app, err := a.apiClient.GetApp(ctx, plan.App.Value)
+	app, err := a.apiClient.GetApp(ctx, plan.App.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to get app", err.Error())
 	}
@@ -124,13 +124,13 @@ func (a deployTokenResource) Read(ctx context.Context, req resource.ReadRequest,
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	tokens, err := graphql.LimitedAccessTokens(ctx, a.gqlClient, state.App.Value)
+	tokens, err := graphql.LimitedAccessTokens(ctx, a.gqlClient, state.App.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("failed querying access tokens", err.Error())
 		return
 	}
 	for _, t := range tokens.App.LimitedAccessTokens.Nodes {
-		if t.Id == state.ID.Value {
+		if t.Id == state.ID.ValueString() {
 			state.updateFromGql(t.LimitedAccessToken)
 			resp.Diagnostics.Append(resp.State.Set(ctx, state)...)
 			return
@@ -149,7 +149,7 @@ func (a deployTokenResource) Delete(ctx context.Context, req resource.DeleteRequ
 		return
 	}
 
-	err := a.apiClient.RevokeLimitedAccessToken(ctx, state.ID.Value)
+	err := a.apiClient.RevokeLimitedAccessToken(ctx, state.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("failed deleting access token", err.Error())
 		return

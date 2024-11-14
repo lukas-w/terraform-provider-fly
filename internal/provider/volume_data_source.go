@@ -74,8 +74,8 @@ func (v volumeDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 	diags := req.Config.Get(ctx, &data)
 	resp.Diagnostics.Append(diags...)
 
-	internalId := data.Internalid.Value
-	app := data.Appid.Value
+	internalId := data.Internalid.ValueString()
+	app := data.Appid.ValueString()
 
 	query, err := graphql.VolumeQuery(context.Background(), v.gqlClient, app, internalId)
 	if err != nil {
@@ -83,12 +83,12 @@ func (v volumeDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 	}
 
 	data = volumeDataSourceOutput{
-		Id:         types.String{Value: query.App.Volume.Id},
-		Name:       types.String{Value: query.App.Volume.Name},
-		Size:       types.Int64{Value: int64(query.App.Volume.SizeGb)},
-		Appid:      types.String{Value: data.Appid.Value},
-		Region:     types.String{Value: query.App.Volume.Region},
-		Internalid: types.String{Value: query.App.Volume.InternalId},
+		Id:         types.StringValue(query.App.Volume.Id),
+		Name:       types.StringValue(query.App.Volume.Name),
+		Size:       types.Int64Value(int64(query.App.Volume.SizeGb)),
+		Appid:      data.Appid,
+		Region:     types.StringValue(query.App.Volume.Region),
+		Internalid: types.StringValue(query.App.Volume.InternalId),
 	}
 
 	if resp.Diagnostics.HasError() {

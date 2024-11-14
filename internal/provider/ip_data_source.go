@@ -58,7 +58,7 @@ func (i ipDataSource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics
 				Type:                types.StringType,
 				Computed:            true,
 				PlanModifiers: tfsdk.AttributePlanModifiers{
-					modifiers.Default(types.String{Value: "global"}),
+					modifiers.Default(types.StringValue("global")),
 				},
 			},
 		},
@@ -79,8 +79,8 @@ func (i ipDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp
 		return
 	}
 
-	query, err := graphql.IpAddressQuery(context.Background(), i.gqlClient, data.Id.Value)
-	tflog.Info(ctx, fmt.Sprintf("Query res: for %s %+v", data.Id.Value, query))
+	query, err := graphql.IpAddressQuery(context.Background(), i.gqlClient, data.Id.ValueString())
+	tflog.Info(ctx, fmt.Sprintf("Query res: for %s %+v", data.Id.ValueString(), query))
 	var errList gqlerror.List
 	if errors.As(err, &errList) {
 		for _, err := range errList {
@@ -95,11 +95,11 @@ func (i ipDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp
 	}
 
 	data = ipDataSourceOutput{
-		Id:      types.String{Value: query.IpAddress.Id},
-		Appid:   types.String{Value: data.Appid.Value},
-		Region:  types.String{Value: query.IpAddress.Region},
-		Type:    types.String{Value: string(query.IpAddress.Type)},
-		Address: types.String{Value: query.IpAddress.Address},
+		Id:      types.StringValue(query.IpAddress.Id),
+		Appid:   types.StringValue(data.Appid.ValueString()),
+		Region:  types.StringValue(query.IpAddress.Region),
+		Type:    types.StringValue(string(query.IpAddress.Type)),
+		Address: types.StringValue(query.IpAddress.Address),
 	}
 
 	diags = resp.State.Set(ctx, &data)

@@ -19,9 +19,9 @@ type organizationResource struct {
 }
 
 func (m *organizationResourceModel) fromApiOrganization(org fly.Organization) {
-	m.Name = types.String{Value: org.Name}
-	m.ID = types.String{Value: org.ID}
-	m.Slug = types.String{Value: org.Slug}
+	m.Name = types.StringValue(org.Name)
+	m.ID = types.StringValue(org.ID)
+	m.Slug = types.StringValue(org.Slug)
 }
 
 func (r organizationResource) Metadata(_ context.Context, _ resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -52,7 +52,7 @@ func (r organizationResource) Create(ctx context.Context, req resource.CreateReq
 	var data organizationResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
 
-	org, err := r.apiClient.CreateOrganization(ctx, data.Name.Value)
+	org, err := r.apiClient.CreateOrganization(ctx, data.Name.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("failed creating organization", err.Error())
 		return
@@ -66,7 +66,7 @@ func (r organizationResource) Read(ctx context.Context, req resource.ReadRequest
 	var data organizationResourceModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 
-	org, err := r.apiClient.GetOrganizationBySlug(ctx, data.Slug.Value)
+	org, err := r.apiClient.GetOrganizationBySlug(ctx, data.Slug.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("failed getting organization", err.Error())
 		return
@@ -87,7 +87,7 @@ func (r organizationResource) Delete(ctx context.Context, req resource.DeleteReq
 	var data organizationResourceModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 
-	_, err := r.apiClient.DeleteOrganization(ctx, data.ID.Value)
+	_, err := r.apiClient.DeleteOrganization(ctx, data.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("failed deleting organization", err.Error())
 		return

@@ -111,17 +111,17 @@ func (p *provider) Configure(ctx context.Context, req tfsdkprovider.ConfigureReq
 	}
 
 	var token string
-	if data.FlyToken.Unknown {
+	if data.FlyToken.IsUnknown() {
 		resp.Diagnostics.AddWarning(
 			"Unable to create gqlClient",
 			"Cannot use unknown value as token",
 		)
 		return
 	}
-	if data.FlyToken.Null || data.FlyToken.Unknown {
+	if data.FlyToken.IsNull() || data.FlyToken.IsUnknown() {
 		token = os.Getenv("FLY_API_TOKEN")
 	} else {
-		token = data.FlyToken.Value
+		token = data.FlyToken.ValueString()
 	}
 	if token == "" {
 		resp.Diagnostics.AddError(
@@ -135,8 +135,8 @@ func (p *provider) Configure(ctx context.Context, req tfsdkprovider.ConfigureReq
 
 	apiBaseUrl, exists := os.LookupEnv("FLY_HTTP_ENDPOINT")
 	httpEndpoint := "127.0.0.1:4280"
-	if !data.FlyHttpEndpoint.Null && !data.FlyHttpEndpoint.Unknown {
-		httpEndpoint = data.FlyHttpEndpoint.Value
+	if !data.FlyHttpEndpoint.IsNull() && !data.FlyHttpEndpoint.IsUnknown() {
+		httpEndpoint = data.FlyHttpEndpoint.ValueString()
 	} else if exists {
 		httpEndpoint = apiBaseUrl
 	}

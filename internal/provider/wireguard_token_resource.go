@@ -57,15 +57,15 @@ func (f flyWireguardTokenResource) Create(ctx context.Context, req resource.Crea
 
 	name := ""
 	if !(data.Name.IsUnknown() || data.Name.IsNull()) {
-		name = data.Name.Value
+		name = data.Name.ValueString()
 	}
-	token, err := f.apiClient.CreateDelegatedWireGuardToken(ctx, &fly.Organization{ID: data.Organization.Value}, name)
+	token, err := f.apiClient.CreateDelegatedWireGuardToken(ctx, &fly.Organization{ID: data.Organization.ValueString()}, name)
 	if err != nil {
 		resp.Diagnostics.AddError("CreateDelegatedWireGuardToken failed", err.Error())
 		return
 	}
 
-	data.Token = types.String{Value: token.Token}
+	data.Token = types.StringValue(token.Token)
 	resp.Diagnostics.Append(resp.State.Set(ctx, data)...)
 }
 
@@ -80,13 +80,13 @@ func (f flyWireguardTokenResource) Delete(ctx context.Context, req resource.Dele
 	var data flyWireguardTokenModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 
-	var name, token *string
+	var name, token string
 	if !(data.Name.IsNull() || data.Name.IsUnknown()) {
-		name = &data.Name.Value
+		name = data.Name.ValueString()
 	} else {
-		token = &data.Token.Value
+		token = data.Token.ValueString()
 	}
-	err := f.apiClient.DeleteDelegatedWireGuardToken(ctx, &fly.Organization{ID: data.Organization.Value}, name, token)
+	err := f.apiClient.DeleteDelegatedWireGuardToken(ctx, &fly.Organization{ID: data.Organization.ValueString()}, &name, &token)
 	if err != nil {
 		resp.Diagnostics.AddError("DeleteDelegatedWireGuardToken failed", err.Error())
 		return

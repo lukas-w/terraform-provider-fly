@@ -62,12 +62,12 @@ func (r secretResource) Create(ctx context.Context, request resource.CreateReque
 	var data secretResourceModel
 	response.Diagnostics.Append(request.Plan.Get(ctx, &data)...)
 
-	s := r.setSecret(ctx, data.App.Value, data.Name.Value, data.Value.Value, &response.Diagnostics)
+	s := r.setSecret(ctx, data.App.ValueString(), data.Name.ValueString(), data.Value.ValueString(), &response.Diagnostics)
 	if response.Diagnostics.HasError() {
 		return
 	}
-	data.Digest = types.String{Value: s.Digest}
-	data.CreatedAt = types.String{Value: s.CreatedAt.Format(time.RFC3339)}
+	data.Digest = types.StringValue(s.Digest)
+	data.CreatedAt = types.StringValue(s.CreatedAt.Format(time.RFC3339))
 
 	response.Diagnostics.Append(response.State.Set(ctx, data)...)
 }
@@ -75,7 +75,7 @@ func (r secretResource) Create(ctx context.Context, request resource.CreateReque
 func (r secretResource) Read(ctx context.Context, request resource.ReadRequest, response *resource.ReadResponse) {
 	var data secretResourceModel
 	response.Diagnostics.Append(request.State.Get(ctx, &data)...)
-	s := r.getSecret(ctx, data.App.Value, data.Name.Value, &response.Diagnostics)
+	s := r.getSecret(ctx, data.App.ValueString(), data.Name.ValueString(), &response.Diagnostics)
 	if response.Diagnostics.HasError() {
 		return
 	}
@@ -84,11 +84,11 @@ func (r secretResource) Read(ctx context.Context, request resource.ReadRequest, 
 		return
 	}
 
-	if data.CreatedAt.Value != s.CreatedAt.Format(time.RFC3339) || data.Digest.Value != s.Digest {
-		data.Value = types.String{Unknown: true}
+	if data.CreatedAt.ValueString() != s.CreatedAt.Format(time.RFC3339) || data.Digest.ValueString() != s.Digest {
+		data.Value = types.StringUnknown()
 	}
-	data.Digest = types.String{Value: s.Digest}
-	data.CreatedAt = types.String{Value: s.CreatedAt.Format(time.RFC3339)}
+	data.Digest = types.StringValue(s.Digest)
+	data.CreatedAt = types.StringValue(s.CreatedAt.Format(time.RFC3339))
 	response.Diagnostics.Append(response.State.Set(ctx, data)...)
 }
 
@@ -96,13 +96,13 @@ func (r secretResource) Update(ctx context.Context, request resource.UpdateReque
 	var data secretResourceModel
 	response.Diagnostics.Append(request.Plan.Get(ctx, &data)...)
 
-	s := r.setSecret(ctx, data.App.Value, data.Name.Value, data.Value.Value, &response.Diagnostics)
+	s := r.setSecret(ctx, data.App.ValueString(), data.Name.ValueString(), data.Value.ValueString(), &response.Diagnostics)
 	if response.Diagnostics.HasError() {
 		return
 	}
 
-	data.Digest = types.String{Value: s.Digest}
-	data.CreatedAt = types.String{Value: s.CreatedAt.Format(time.RFC3339)}
+	data.Digest = types.StringValue(s.Digest)
+	data.CreatedAt = types.StringValue(s.CreatedAt.Format(time.RFC3339))
 	response.Diagnostics.Append(response.State.Set(ctx, data)...)
 }
 
@@ -110,7 +110,7 @@ func (r secretResource) Delete(ctx context.Context, request resource.DeleteReque
 	var data secretResourceModel
 	response.Diagnostics.Append(request.State.Get(ctx, &data)...)
 
-	resp, err := graphql.UnsetSecrets(ctx, r.gqlClient, data.App.Value, []string{data.Name.Value})
+	resp, err := graphql.UnsetSecrets(ctx, r.gqlClient, data.App.ValueString(), []string{data.Name.ValueString()})
 	if response.Diagnostics.HasError() {
 		return
 	}
@@ -119,7 +119,7 @@ func (r secretResource) Delete(ctx context.Context, request resource.DeleteReque
 		return
 	}
 	for _, secret := range resp.UnsetSecrets.App.Secrets {
-		if secret.Name == data.Name.Value {
+		if secret.Name == data.Name.ValueString() {
 			response.Diagnostics.AddError("error unsetting secret", "api call successful but secret is still there")
 			return
 		}
