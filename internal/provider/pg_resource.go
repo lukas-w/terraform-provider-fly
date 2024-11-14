@@ -3,9 +3,9 @@ package provider
 import (
 	"context"
 	"fmt"
-	"github.com/fly-apps/terraform-provider-fly/pkg/apiv1"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	hreq "github.com/imroc/req/v3"
+	"github.com/samber/lo"
 	"github.com/superfly/fly-go"
 )
 
@@ -22,10 +22,12 @@ func (r pgResource) getPgClient(ctx context.Context, app string, diags *diag.Dia
 }
 
 func (r pgResource) getLeaderIP(ctx context.Context, app string, diags *diag.Diagnostics) string {
-	machineAPI := r.machineApi(app)
+	client := r.getFlapsClient(ctx, app, diags)
+	if diags.HasError() {
+		return ""
+	}
 
-	var machines apiv1.Machines
-	_, err := machineAPI.ListMachines(&machines)
+	machines, err := client.List(ctx, "")
 	if err != nil {
 		diags.AddError("Error in ListMachines", err.Error())
 		return ""
@@ -34,7 +36,7 @@ func (r pgResource) getLeaderIP(ctx context.Context, app string, diags *diag.Dia
 		diags.AddError("Can't connect to postgres", fmt.Sprintf("App %s has no machines", app))
 		return ""
 	}
-	machines = machines.WithoutInactive()
+	machines = filterActiveMachines(machines)
 	if len(machines) == 0 {
 		diags.AddError("Can't connect to postgres", fmt.Sprintf("App %s has no active machines", app))
 		return ""
@@ -64,11 +66,17 @@ func machineRole(machine *fly.Machine) (role string) {
 	return role
 }
 
-func findLeader(machines apiv1.Machines) *fly.Machine {
+func findLeader(machines []*fly.Machine) *fly.Machine {
 	for _, machine := range machines {
 		if machineRole(machine) == "leader" {
 			return machine
 		}
 	}
 	return nil
+}
+
+func filterActiveMachines(m []*fly.Machine) []*fly.Machine {
+	return lo.Filter(m, func(m *fly.Machine, _ int) bool {
+		return m.Config != nil && m.Config.Metadata["process_group"] != "release_command" && m.State != "destroyed"
+	})
 }

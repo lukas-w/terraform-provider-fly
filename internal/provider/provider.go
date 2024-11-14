@@ -7,13 +7,13 @@ import (
 	providerGraphql "github.com/fly-apps/terraform-provider-fly/graphql"
 	"github.com/fly-apps/terraform-provider-fly/internal/utils"
 	"github.com/fly-apps/terraform-provider-fly/internal/wg"
-	"github.com/fly-apps/terraform-provider-fly/pkg/apiv1"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	hreq "github.com/imroc/req/v3"
 	"github.com/superfly/fly-go"
 	"github.com/superfly/fly-go/flaps"
+	"github.com/superfly/fly-go/tokens"
 	"net/http"
 	"os"
 	"time"
@@ -53,10 +53,7 @@ type providerApi struct {
 	httpClient   hreq.Client
 	apiClient    fly.Client
 	flapsClients map[string]*flaps.Client
-}
-
-func (c *providerApi) machineApi(app string) *apiv1.MachineAPI {
-	return apiv1.NewMachineAPI(&c.httpClient, c.httpEndpoint, app)
+	tokens       *tokens.Tokens
 }
 
 func (c *providerApi) configure(providerData any, diags *diag.Diagnostics) {
@@ -74,28 +71,35 @@ func (c *providerApi) configure(providerData any, diags *diag.Diagnostics) {
 	}
 }
 
-func (p *providerApi) getFlapsClient(ctx context.Context, app string) (*flaps.Client, error) {
+func (p *providerApi) getFlapsClient(ctx context.Context, app string, diags *diag.Diagnostics) *flaps.Client {
 	if p.flapsClients == nil {
 		p.flapsClients = make(map[string]*flaps.Client)
 	}
 
 	if client, ok := p.flapsClients[app]; ok {
-		return client, nil
+		return client
 	}
 
 	appCompact, err := p.apiClient.GetAppCompact(ctx, app)
 	if err != nil {
-		return nil, err
+		diags.AddError("Failed to get app compact", err.Error())
+		return nil
 	}
 	client, err := flaps.NewWithOptions(ctx, flaps.NewClientOpts{
 		AppName:    app,
 		AppCompact: appCompact,
+		Tokens:     p.tokens,
+		//DialContext: p.httpClient.DialContext,
+		//OrgSlug:     appCompact.Organization.Slug,
+		//Transport: p.httpClient.Transport,
 	})
 	if err != nil {
-		return nil, err
+		diags.AddError("Failed to create flaps client", err.Error())
+		return nil
 	}
+
 	p.flapsClients[app] = client
-	return client, nil
+	return client
 }
 
 type providerData struct {
@@ -148,6 +152,7 @@ func (p *provider) Configure(ctx context.Context, req tfsdkprovider.ConfigureReq
 
 	var clients providerApi
 	clients.httpEndpoint = httpEndpoint
+	clients.tokens = tokens.Parse(token)
 
 	enableTracing := false
 	_, ok := os.LookupEnv("DEBUG")

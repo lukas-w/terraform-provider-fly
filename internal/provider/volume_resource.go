@@ -103,9 +103,8 @@ func (vr flyVolumeResource) Create(ctx context.Context, req resource.CreateReque
 	diags := req.Plan.Get(ctx, &data)
 	resp.Diagnostics.Append(diags...)
 
-	client, err := vr.getFlapsClient(ctx, data.Appid.Value)
-	if err != nil {
-		resp.Diagnostics.AddError("Error getting flaps client", err.Error())
+	client := vr.getFlapsClient(ctx, data.Appid.Value, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 
@@ -134,9 +133,8 @@ func (vr flyVolumeResource) Read(ctx context.Context, req resource.ReadRequest, 
 
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 
-	client, err := vr.getFlapsClient(ctx, data.Appid.Value)
-	if err != nil {
-		resp.Diagnostics.AddError("Error getting flaps client", err.Error())
+	client := vr.getFlapsClient(ctx, data.Appid.Value, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 
@@ -165,9 +163,8 @@ func (vr flyVolumeResource) Update(ctx context.Context, req resource.UpdateReque
 		return
 	}
 
-	client, err := vr.getFlapsClient(ctx, state.Appid.Value)
-	if err != nil {
-		resp.Diagnostics.AddError("Error getting flaps client", err.Error())
+	client := vr.getFlapsClient(ctx, state.Appid.Value, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 
@@ -192,13 +189,12 @@ func (vr flyVolumeResource) Delete(ctx context.Context, req resource.DeleteReque
 	var data flyVolumeResourceData
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 
-	client, err := vr.getFlapsClient(ctx, data.Appid.Value)
-	if err != nil {
-		resp.Diagnostics.AddError("Error getting flaps client", err.Error())
+	client := vr.getFlapsClient(ctx, data.Appid.Value, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	_, err = client.DeleteVolume(ctx, data.Id.Value)
+	_, err := client.DeleteVolume(ctx, data.Id.Value)
 	if err != nil {
 		resp.Diagnostics.AddError("Delete volume failed", err.Error())
 		return

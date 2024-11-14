@@ -28,6 +28,13 @@ type TfService struct {
 	Concurrency  *TfServiceConcurrency `tfsdk:"concurrency"`
 }
 
+type CpuKind string
+
+const (
+	CpuKindShared    CpuKind = "shared"
+	CpuKindDedicated CpuKind = "dedicated"
+)
+
 type TfGuest struct {
 	Cpus       types.Int64  `tfsdk:"cpus"`
 	MemoryMb   types.Int64  `tfsdk:"memory_mb"`

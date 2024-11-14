@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/fly-apps/terraform-provider-fly/internal/provider/modifiers"
-	"github.com/fly-apps/terraform-provider-fly/pkg/apiv1"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -14,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/superfly/fly-go"
+	"github.com/superfly/fly-go/flaps"
 	"time"
 )
 
@@ -128,7 +128,7 @@ func (flyMachineResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnos
 								MarkdownDescription: "cpu type",
 								Required:            true,
 								Type:                types.StringType,
-								PlanModifiers:       []tfsdk.AttributePlanModifier{modifiers.Default(types.String{Value: string(apiv1.CpuTypeShared)})},
+								PlanModifiers:       []tfsdk.AttributePlanModifier{modifiers.Default(types.String{Value: string(CpuKindShared)})},
 							},
 							"cpus": {
 								MarkdownDescription: "cpu count",
@@ -463,7 +463,11 @@ func (mr flyMachineResource) Create(ctx context.Context, req resource.CreateRequ
 		return
 	}
 
-	machineAPI := mr.machineApi(data.App.Value)
+	client := mr.getFlapsClient(ctx, data.App.Value, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	mReq := data.makeMachineRequest(ctx, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
@@ -472,8 +476,7 @@ func (mr flyMachineResource) Create(ctx context.Context, req resource.CreateRequ
 		resp.Diagnostics.AddError("error creating machine request", "Request is nil. This is a bug.")
 		return
 	}
-	var machine fly.Machine
-	err := machineAPI.CreateMachine(*mReq, &machine)
+	machine, err := client.Launch(ctx, *mReq)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to create machine", err.Error())
 		return
@@ -481,7 +484,7 @@ func (mr flyMachineResource) Create(ctx context.Context, req resource.CreateRequ
 
 	tflog.Info(ctx, fmt.Sprintf("%+v", machine))
 
-	resp.Diagnostics.Append(data.updateFromApiCreateData(machine)...)
+	resp.Diagnostics.Append(data.updateFromApiCreateData(*machine)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -492,7 +495,7 @@ func (mr flyMachineResource) Create(ctx context.Context, req resource.CreateRequ
 	}
 
 	if data.Wait.Equal(types.Bool{Value: true}) {
-		err = machineAPI.WaitForMachine(machine.ID, machine.InstanceID)
+		err = client.Wait(ctx, machine, fly.MachineStateStarted, 5*time.Minute)
 		if err != nil {
 			//FIXME(?): For now we just assume that the orchestrator is in fact going to faithfully execute our request
 			tflog.Info(ctx, "Waiting errored")
@@ -516,16 +519,18 @@ func (mr flyMachineResource) Read(ctx context.Context, req resource.ReadRequest,
 	var data flyMachineResourceData
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 
-	machineAPI := mr.machineApi(data.App.Value)
+	flaps := mr.getFlapsClient(ctx, data.App.Value, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
-	var machine fly.Machine
-	_, err := machineAPI.ReadMachine(data.Id.Value, &machine)
+	machine, err := flaps.Get(ctx, data.Id.Value)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to get machine", err.Error())
 		return
 	}
 
-	resp.Diagnostics.Append(data.updateFromApiData(machine)...)
+	resp.Diagnostics.Append(data.updateFromApiData(*machine)...)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -541,7 +546,11 @@ func (mr flyMachineResource) Update(ctx context.Context, req resource.UpdateRequ
 		return
 	}
 
-	machineAPI := mr.machineApi(state.App.Value)
+	client := mr.getFlapsClient(ctx, state.App.Value, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	mReq := plan.makeMachineRequest(ctx, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
@@ -550,16 +559,24 @@ func (mr flyMachineResource) Update(ctx context.Context, req resource.UpdateRequ
 		resp.Diagnostics.AddError("error creating machine request", "Request is nil. This is a bug.")
 		return
 	}
-	var machine fly.Machine
-	err := machineAPI.UpdateMachine(*mReq, state.Id.Value, &machine)
+	mReq.ID = state.Id.Value
+
+	ttl := 30
+	lease, err := client.AcquireLease(ctx, state.Id.Value, &ttl)
+	if err != nil {
+		resp.Diagnostics.AddError("Failed to acquire lease", err.Error())
+		return
+	}
+
+	machine, err := client.Update(ctx, *mReq, lease.Data.Nonce)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to update machine", err.Error())
 		return
 	}
 
-	resp.Diagnostics.Append(state.updateFromApiData(machine)...)
+	resp.Diagnostics.Append(state.updateFromApiData(*machine)...)
 	if plan.Wait.Equal(types.Bool{Value: true}) {
-		err = machineAPI.WaitForMachine(machine.ID, machine.InstanceID)
+		err = client.Wait(ctx, machine, fly.MachineStateStarted, 5*time.Minute)
 		if err != nil {
 			tflog.Info(ctx, "Waiting errored")
 		}
@@ -583,12 +600,93 @@ func (mr flyMachineResource) Delete(ctx context.Context, req resource.DeleteRequ
 	var data flyMachineResourceData
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 
-	machineAPI := mr.machineApi(data.App.Value)
-
-	err := machineAPI.DeleteMachine(data.Id.Value, 50)
-	if err != nil {
-		resp.Diagnostics.AddError("Machine delete failed", err.Error())
+	client := mr.getFlapsClient(ctx, data.App.Value, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
 	}
+
+	resp.Diagnostics.Append(stopAndDestroyMachine(ctx, *client, data.Id.Value)...)
+}
+
+func stopAndDestroyMachine(ctx context.Context, client flaps.Client, id string) (diag diag.Diagnostics) {
+	ttl := 60
+	lease, err := client.AcquireLease(ctx, id, &ttl)
+	if err != nil {
+		diag.AddError("Failed to acquire lease", err.Error())
+		return
+	}
+	nonce := lease.Data.Nonce
+
+	machine := stopMachine(ctx, client, id, nonce, 5*time.Minute, diag)
+	if diag.HasError() {
+		return
+	}
+
+	err = client.Destroy(ctx, fly.RemoveMachineInput{
+		ID: id,
+	}, nonce)
+	if err != nil {
+		diag.AddError("Machine delete failed", err.Error())
+		return
+	}
+
+	// Wait for destroyed
+	err = client.Wait(ctx, machine, fly.MachineStateDestroyed, 1*time.Minute)
+	if err != nil {
+		diag.AddError("Failed to wait for machine to be destroyed", err.Error())
+		return
+	}
+
+	machine, err = client.Get(ctx, id)
+	if err != nil {
+		diag.AddError("Failed to get machine", err.Error())
+		return
+	}
+	if machine.State != fly.MachineStateDestroyed {
+		diag.AddError("Failed to destroy machine", "Waited for machine to be destroyed but it's still there")
+		return
+	}
+
+	return
+}
+
+func stopMachine(ctx context.Context, client flaps.Client, id string, nonce string, timeout time.Duration, diag diag.Diagnostics) (machine *fly.Machine) {
+	machine, err := client.Get(ctx, id)
+	if err != nil {
+		diag.AddError("Failed to get machine", err.Error())
+		return
+	}
+
+	if machine.State == fly.MachineStateStarted {
+		err = client.Stop(ctx, fly.StopMachineInput{
+			ID: id,
+		}, nonce)
+		if err != nil {
+			diag.AddError("Failed to stop machine", err.Error())
+			return
+		}
+
+		// Wait for machine to be stopped
+		err = client.Wait(ctx, machine, fly.MachineStateStopped, timeout)
+		if err != nil {
+			diag.AddError("Failed to wait for machine to stop", err.Error())
+			return
+		}
+
+		machine, err = client.Get(ctx, id)
+		if err != nil {
+			diag.AddError("Failed to get machine", err.Error())
+			return
+		}
+
+		if machine.State == fly.MachineStateStarted {
+			diag.AddError("Failed to stop machine", "Waited for machine to stop but it's still running")
+			return
+		}
+	} else {
+		tflog.Info(ctx, "Machine is already stopped")
+	}
+	return
 }
 
 func (mr flyMachineResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
@@ -600,11 +698,14 @@ func (mr flyMachineResource) WaitForChecks(ctx context.Context, data flyMachineR
 	timeout := 5 * time.Minute
 	maxErrors := 3
 
-	machineApi := mr.machineApi(data.App.Value)
+	client := mr.getFlapsClient(ctx, data.App.Value, &diags)
+	if diags.HasError() {
+		return
+	}
 
 	timeoutCh := time.After(timeout)
 
-	var machine fly.Machine
+	var machine *fly.Machine
 	var err error
 	var failingChecks []*fly.MachineCheckStatus
 
@@ -620,12 +721,12 @@ func (mr flyMachineResource) WaitForChecks(ctx context.Context, data flyMachineR
 		case <-time.After(interval):
 		}
 
-		_, err = machineApi.ReadMachine(data.Id.Value, &machine)
+		machine, err = client.Get(ctx, data.Id.Value)
 		if err != nil {
 			tflog.Error(ctx, fmt.Sprintf("ReadMachine failed while waiting for checks: %v", err.Error()))
 			numErrors++
 		} else {
-			data.updateFromApiData(machine)
+			data.updateFromApiData(*machine)
 			diags.Append(state.Set(ctx, data)...)
 			if diags.HasError() {
 				return
