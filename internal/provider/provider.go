@@ -4,13 +4,10 @@ import (
 	"context"
 	"fmt"
 	"github.com/Khan/genqlient/graphql"
-	providerGraphql "github.com/fly-apps/terraform-provider-fly/graphql"
 	"github.com/fly-apps/terraform-provider-fly/internal/utils"
-	"github.com/fly-apps/terraform-provider-fly/internal/wg"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
-	hreq "github.com/imroc/req/v3"
 	"github.com/superfly/fly-go"
 	"github.com/superfly/fly-go/flaps"
 	"github.com/superfly/fly-go/tokens"
@@ -50,7 +47,6 @@ type provider struct {
 type providerApi struct {
 	httpEndpoint string
 	gqlClient    gqlClient
-	httpClient   hreq.Client
 	apiClient    fly.Client
 	flapsClients map[string]*flaps.Client
 	tokens       *tokens.Tokens
@@ -89,9 +85,7 @@ func (p *providerApi) getFlapsClient(ctx context.Context, app string, diags *dia
 		AppName:    app,
 		AppCompact: appCompact,
 		Tokens:     p.tokens,
-		//DialContext: p.httpClient.DialContext,
 		//OrgSlug:     appCompact.Organization.Slug,
-		//Transport: p.httpClient.Transport,
 	})
 	if err != nil {
 		diags.AddError("Failed to create flaps client", err.Error())
@@ -103,11 +97,8 @@ func (p *providerApi) getFlapsClient(ctx context.Context, app string, diags *dia
 }
 
 type providerData struct {
-	FlyToken             types.String `tfsdk:"fly_api_token"`
-	FlyHttpEndpoint      types.String `tfsdk:"fly_http_endpoint"`
-	UseInternalTunnel    types.Bool   `tfsdk:"useinternaltunnel"`
-	InternalTunnelOrg    types.String `tfsdk:"internaltunnelorg"`
-	InternalTunnelRegion types.String `tfsdk:"internaltunnelregion"`
+	FlyToken        types.String `tfsdk:"fly_api_token"`
+	FlyHttpEndpoint types.String `tfsdk:"fly_http_endpoint"`
 }
 
 func (p *provider) Configure(ctx context.Context, req tfsdkprovider.ConfigureRequest, resp *tfsdkprovider.ConfigureResponse) {
@@ -161,35 +152,10 @@ func (p *provider) Configure(ctx context.Context, req tfsdkprovider.ConfigureReq
 		resp.Diagnostics.AddWarning("Debug mode enabled", "Debug mode enabled, this will add the Fly-Force-Trace header to all graphql requests")
 	}
 
-	clients.httpClient = *hreq.C()
-
-	if enableTracing {
-		clients.httpClient.SetCommonHeader("Fly-Force-Trace", "true")
-		clients.httpClient = *hreq.C().DevMode()
-	}
-
-	clients.httpClient.SetCommonHeader("Authorization", "Bearer "+p.token)
-	clients.httpClient.SetTimeout(2 * time.Minute)
-
 	// TODO: Make timeout configurable
 	h := http.Client{Timeout: 60 * time.Second, Transport: &utils.Transport{UnderlyingTransport: http.DefaultTransport, Token: token, Ctx: ctx, EnableDebugTrace: enableTracing}}
 	client := graphql.NewClient(fmt.Sprintf("%s/graphql", baseUrl), &h)
 	clients.gqlClient = *(*gqlClient)(&client)
-
-	if data.UseInternalTunnel.Value {
-		org, err := providerGraphql.Organization(context.Background(), client, "", "", data.InternalTunnelOrg.Value)
-		if err != nil {
-			resp.Diagnostics.AddError("Could not resolve organization", err.Error())
-			return
-		}
-		tunnel, err := wg.Establish(ctx, org.Organization.Id, data.InternalTunnelRegion.Value, token, &client)
-		if err != nil {
-			resp.Diagnostics.AddError("failed to open internal tunnel", err.Error())
-			return
-		}
-		clients.httpClient.SetDial(tunnel.NetStack().DialContext)
-		clients.httpEndpoint = "_api.internal:4280"
-	}
 
 	fly.SetBaseURL(baseUrl)
 	clients.apiClient = *fly.NewClient(p.token, "terraform-provider-fly", p.version, logger{ctx})
@@ -210,9 +176,6 @@ func (p *provider) Resources(ctx context.Context) []func() resource.Resource {
 		newFlyMachineResource,
 		newOrganizationResource,
 		newRedisResource,
-		NewPgDbResource,
-		NewPgUserResource,
-		newPgAttachmentResource,
 		newPostgresConsulResource,
 		newFlyWireguardTokenResource,
 	}
@@ -240,18 +203,6 @@ func (p *provider) GetSchema(ctx context.Context) (tfsdk.Schema, diag.Diagnostic
 				MarkdownDescription: "Where the clients should look to find the fly http endpoint",
 				Optional:            true,
 				Type:                types.StringType,
-			},
-			"useinternaltunnel": {
-				Optional: true,
-				Type:     types.BoolType,
-			},
-			"internaltunnelorg": {
-				Optional: true,
-				Type:     types.StringType,
-			},
-			"internaltunnelregion": {
-				Optional: true,
-				Type:     types.StringType,
 			},
 		},
 	}, nil

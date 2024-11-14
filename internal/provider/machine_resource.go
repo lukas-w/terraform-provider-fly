@@ -375,15 +375,6 @@ func (flyMachineResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnos
 	}, nil
 }
 
-func (mr flyMachineResource) ValidateOpenTunnel(diags *diag.Diagnostics) bool {
-	_, err := mr.httpClient.R().Get(fmt.Sprintf("http://%s", mr.httpEndpoint))
-	if err != nil {
-		diags.AddError("fly wireguard tunnel must be open", "can't connect to the api, is the tunnel open? :)")
-		return false
-	}
-	return true
-}
-
 func TfServicesToServices(input []TfService) []fly.MachineService {
 	services := make([]fly.MachineService, 0)
 	for _, s := range input {
@@ -452,10 +443,6 @@ func ServicesToTfServices(input []fly.MachineService) []TfService {
 }
 
 func (mr flyMachineResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	if !mr.ValidateOpenTunnel(&resp.Diagnostics) {
-		return
-	}
-
 	var data flyMachineResourceData
 
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
@@ -512,10 +499,6 @@ func (mr flyMachineResource) Create(ctx context.Context, req resource.CreateRequ
 }
 
 func (mr flyMachineResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	if !mr.ValidateOpenTunnel(&resp.Diagnostics) {
-		return
-	}
-
 	var data flyMachineResourceData
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 
@@ -535,10 +518,6 @@ func (mr flyMachineResource) Read(ctx context.Context, req resource.ReadRequest,
 }
 
 func (mr flyMachineResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	if !mr.ValidateOpenTunnel(&resp.Diagnostics) {
-		return
-	}
-
 	var plan, state flyMachineResourceData
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
@@ -593,10 +572,6 @@ func (mr flyMachineResource) Update(ctx context.Context, req resource.UpdateRequ
 }
 
 func (mr flyMachineResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	if !mr.ValidateOpenTunnel(&resp.Diagnostics) {
-		return
-	}
-
 	var data flyMachineResourceData
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 

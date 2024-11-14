@@ -1,7 +1,6 @@
 package provider
 
 import (
-	"fmt"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"os"
@@ -42,11 +41,8 @@ func getTestRegion() string {
 }
 
 func providerConfig() string {
-	return fmt.Sprintf(`
+	return `
 provider "fly" {
-  useinternaltunnel    = true
-  internaltunnelorg    = "%s"
-  internaltunnelregion = "%s"
 }
-`, getTestOrg(), getTestRegion())
+`
 }
