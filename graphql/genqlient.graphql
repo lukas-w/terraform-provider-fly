@@ -227,34 +227,6 @@ mutation DeleteCertificate($app: ID!, $hostname: String!) {
     }
 }
 
-mutation CreatePostgresCluster(
-    $name: String,
-    $orgid: ID!,
-    $region: String,
-    $password: String,
-    $vmsize: String,
-    $volumesize: Int,
-    $count: Int,
-    $imageref: String
-) {
-    createPostgresCluster(input: {
-        name: $name,
-        organizationId: $orgid,
-        region: $region,
-        password: $password,
-        vmSize: $vmsize,
-        volumeSizeGb: $volumesize
-        count: $count,
-        imageRef: $imageref
-    }) {
-        app {
-            name
-        }
-        username
-        password
-    }
-}
-
 mutation AddWireguardPeer(
     $input: AddWireGuardPeerInput!
 ) {
@@ -330,34 +302,6 @@ query Organization($id: ID, $name: String, $slug: String) {
     }
 }
 
-mutation CreateAccessToken($name: String!) {
-    createAccessToken(input: {name: $name}) {
-        accessToken {
-            id
-            name
-            token
-            createdAt
-        }
-    }
-}
-
-mutation DeleteAccessToken($id: ID!) {
-    deleteAccessToken(input: {accessTokenId: $id}) {
-        clientMutationId
-    }
-}
-
-query GetAccessTokens {
-    accessTokens {
-        nodes {
-            name
-            id
-            createdAt
-            token
-        }
-    }
-}
-
 fragment LimitedAccessToken on LimitedAccessToken {
     id
     name
@@ -375,14 +319,8 @@ mutation CreateLimitedAccessToken($input: CreateLimitedAccessTokenInput!) {
     }
 }
 
-mutation DeleteLimitedAccessToken($id: ID!) {
-    deleteLimitedAccessToken(input: {token: $id}) {
-        clientMutationId
-    }
-}
-
 query LimitedAccessTokens($app: String!) {
-    app(id: $app) {
+    app(name: $app) {
         limitedAccessTokens {
             nodes {
                 ...LimitedAccessToken

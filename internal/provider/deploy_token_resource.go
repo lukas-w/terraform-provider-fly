@@ -105,6 +105,8 @@ func (a deployTokenResource) Create(ctx context.Context, req resource.CreateRequ
 		ProfileParams: map[string]interface{}{
 			"app_id": app.ID,
 		},
+		OptInThirdParties:  []string{},
+		OptOutThirdParties: []string{},
 	})
 	if err != nil {
 		resp.Diagnostics.AddError("failed creating access token", err.Error())
