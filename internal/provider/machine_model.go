@@ -70,10 +70,10 @@ type TfCheck struct {
 }
 
 type TfMachineMount struct {
-	//Encrypted types.Bool   `tfsdk:"encrypted"`
-	Path types.String `tfsdk:"path"`
-	//SizeGb    types.Int64  `tfsdk:"size_gb"`
-	Volume types.String `tfsdk:"volume"`
+	Encrypted types.Bool   `tfsdk:"encrypted"`
+	Path      types.String `tfsdk:"path"`
+	SizeGb    types.Int64  `tfsdk:"size_gb"`
+	Volume    types.String `tfsdk:"volume"`
 }
 
 type TfMachineInit struct {
@@ -168,30 +168,30 @@ func (d *flyMachineConfigData) updateGuestFromApiData(g *fly.MachineGuest) {
 	}
 }
 
-func (d *flyMachineConfigData) updateFromApiCreateData(c fly.MachineConfig) (diags diag.Diagnostics) {
-	d.Metadata = utils.KVToTfMap(c.Metadata, types.StringType, true)
-	d.Env = utils.KVToTfMap(c.Env, types.StringType, true)
-	d.updateGuestFromApiData(c.Guest)
-	if len(c.Mounts) > 0 {
-		var mounts []TfMachineMount
-		for _, m := range c.Mounts {
-			mounts = append(mounts, TfMachineMount{
-				//Encrypted: types.Bool{Value: m.Encrypted},
-				Path: types.String{Value: m.Path},
-				//SizeGb:    types.Int64{Value: int64(m.SizeGb)},
-				Volume: types.String{Value: m.Volume},
-			})
-		}
-		d.Mounts = mounts
-	} else {
-		d.Mounts = nil
+func updateRestartConfigFromApiData(d *TfRestart, c *fly.MachineRestart) {
+	if c == nil {
+		return
 	}
+	if c.Policy != "" {
+		d = &TfRestart{
+			Policy: types.String{Value: string(c.Policy)},
+		}
+		if d.Policy.Value == string(fly.MachineRestartPolicyOnFailure) {
+			d.MaxRetries = types.Int64{Value: int64(c.MaxRetries)}
+		} else {
+			d.MaxRetries = types.Int64{Null: true}
+		}
+	}
+}
+
+func (d *flyMachineConfigData) updateFromApiCreateData(c fly.MachineConfig) (diags diag.Diagnostics) {
+	d.updateFromApiData(c)
+
+	updateRestartConfigFromApiData(d.Restart, c.Restart)
 	return
 }
 
 func (d *flyMachineConfigData) updateFromApiData(c fly.MachineConfig) (diags diag.Diagnostics) {
-	diags.Append(d.updateFromApiCreateData(c)...)
-
 	d.Image = types.String{Value: c.Image}
 	if len(c.Init.Exec) > 0 || len(c.Init.Cmd) > 0 || len(c.Init.Entrypoint) > 0 {
 		d.Init = &TfMachineInit{
@@ -208,6 +208,23 @@ func (d *flyMachineConfigData) updateFromApiData(c fly.MachineConfig) (diags dia
 		tfServices = nil
 	}
 	d.Services = tfServices
+
+	d.Metadata = utils.KVToTfMap(c.Metadata, types.StringType, true)
+	d.Env = utils.KVToTfMap(c.Env, types.StringType, true)
+	if len(c.Mounts) > 0 {
+		var mounts []TfMachineMount
+		for _, m := range c.Mounts {
+			mounts = append(mounts, TfMachineMount{
+				Encrypted: types.Bool{Value: m.Encrypted},
+				Path:      types.String{Value: m.Path},
+				SizeGb:    types.Int64{Value: int64(m.SizeGb)},
+				Volume:    types.String{Value: m.Volume},
+			})
+		}
+		d.Mounts = mounts
+	} else {
+		d.Mounts = nil
+	}
 
 	if len(c.Processes) > 0 {
 		d.Processes = make([]TfProcess, len(c.Processes))
@@ -248,16 +265,9 @@ func (d *flyMachineConfigData) updateFromApiData(c fly.MachineConfig) (diags dia
 		d.Checks = nil
 	}
 
-	if c.Restart.Policy != "" {
-		d.Restart = &TfRestart{
-			Policy: types.String{Value: string(c.Restart.Policy)},
-		}
-		if d.Restart.Policy.Value == string(fly.MachineRestartPolicyOnFailure) {
-			d.Restart.MaxRetries = types.Int64{Value: int64(c.Restart.MaxRetries)}
-		} else {
-			d.Restart.MaxRetries = types.Int64{Null: true}
-		}
-	}
+	d.updateGuestFromApiData(c.Guest)
+
+	updateRestartConfigFromApiData(d.Restart, c.Restart)
 	return
 }
 
@@ -293,10 +303,10 @@ func (d *flyMachineConfigData) toApiConfig(ctx context.Context, diags *diag.Diag
 		var mounts []fly.MachineMount
 		for _, m := range d.Mounts {
 			mounts = append(mounts, fly.MachineMount{
-				//Encrypted: m.Encrypted.Value,
-				Path: m.Path.Value,
-				//SizeGb:    int(m.SizeGb.Value),
-				Volume: m.Volume.Value,
+				Encrypted: m.Encrypted.Value,
+				Path:      m.Path.Value,
+				SizeGb:    int(m.SizeGb.Value),
+				Volume:    m.Volume.Value,
 			})
 		}
 		conf.Mounts = mounts

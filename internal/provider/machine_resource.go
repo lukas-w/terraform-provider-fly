@@ -33,6 +33,10 @@ func (d *flyMachineResourceData) makeMachineRequest(ctx context.Context, diags *
 	if diags.HasError() {
 		return nil
 	}
+	if conf == nil {
+		diags.AddError("error creating machine request", "Config is nil. This is a bug.")
+		return nil
+	}
 	return &fly.LaunchMachineInput{
 		Name:   d.Name.Value,
 		Region: d.Region.Value,
@@ -130,8 +134,10 @@ func (flyMachineResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnos
 								MarkdownDescription: "cpu count",
 								Required:            true,
 								Type:                types.Int64Type,
-								PlanModifiers:       []tfsdk.AttributePlanModifier{modifiers.Default(types.Int64{Value: 1})},
-								Validators:          []tfsdk.AttributeValidator{int64validator.AtLeast(1)},
+								PlanModifiers: []tfsdk.AttributePlanModifier{
+									modifiers.Default(types.Int64{Value: 1}),
+								},
+								Validators: []tfsdk.AttributeValidator{int64validator.AtLeast(1)},
 							},
 							"memory_mb": {
 								MarkdownDescription: "memory mb",
@@ -142,8 +148,13 @@ func (flyMachineResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnos
 							"kernel_args": {
 								Optional: true,
 								Type:     types.ListType{ElemType: types.StringType},
+								PlanModifiers: []tfsdk.AttributePlanModifier{modifiers.Default(types.List{
+									Null:     true,
+									ElemType: types.StringType,
+								})},
 							},
 						}),
+						PlanModifiers: []tfsdk.AttributePlanModifier{resource.UseStateForUnknown()},
 					},
 					"env": {
 						MarkdownDescription: "Optional environment variables, keys and values must be strings",
@@ -267,6 +278,14 @@ func (flyMachineResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnos
 					},
 					"restart": {
 						Optional: true,
+						Computed: true,
+						PlanModifiers: []tfsdk.AttributePlanModifier{modifiers.Default(types.Object{
+							AttrTypes: map[string]attr.Type{
+								"policy":      types.StringType,
+								"max_retries": types.Int64Type,
+							},
+							Null: true,
+						})},
 						Attributes: tfsdk.SingleNestedAttributes(map[string]tfsdk.Attribute{
 							"policy": {
 								Required:            true,
@@ -463,7 +482,14 @@ func (mr flyMachineResource) Create(ctx context.Context, req resource.CreateRequ
 	tflog.Info(ctx, fmt.Sprintf("%+v", machine))
 
 	resp.Diagnostics.Append(data.updateFromApiCreateData(machine)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
 	if data.Wait.Equal(types.Bool{Value: true}) {
 		err = machineAPI.WaitForMachine(machine.ID, machine.InstanceID)
@@ -518,6 +544,10 @@ func (mr flyMachineResource) Update(ctx context.Context, req resource.UpdateRequ
 	machineAPI := mr.machineApi(state.App.Value)
 	mReq := plan.makeMachineRequest(ctx, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+	if mReq == nil {
+		resp.Diagnostics.AddError("error creating machine request", "Request is nil. This is a bug.")
 		return
 	}
 	var machine fly.Machine

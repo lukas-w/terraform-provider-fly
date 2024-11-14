@@ -41,7 +41,7 @@ func NewMachineAPI(httpClient *hreq.Client, endpoint string, app string) *Machin
 
 func (a *MachineAPI) LockMachine(id string, timeout int) (*fly.MachineLease, error) {
 	var res fly.MachineLease
-	_, err := a.httpClient.R().SetResult(&res).Post(fmt.Sprintf("/%s/lease/?ttl=%d", id, timeout))
+	_, err := a.httpClient.R().SetResult(&res).Post(fmt.Sprintf("/%s/lease?ttl=%d", id, timeout))
 	if err != nil {
 		return nil, err
 	}
