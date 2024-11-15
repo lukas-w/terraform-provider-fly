@@ -4,21 +4,17 @@ import (
 	"context"
 	"fmt"
 	"github.com/Khan/genqlient/graphql"
-	"github.com/fly-apps/terraform-provider-fly/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
+	tfsdkprovider "github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/superfly/fly-go"
 	"github.com/superfly/fly-go/flaps"
 	"github.com/superfly/fly-go/tokens"
-	"net/http"
 	"os"
-	"time"
-
-	"github.com/hashicorp/terraform-plugin-framework/diag"
-	tfsdkprovider "github.com/hashicorp/terraform-plugin-framework/provider"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 var _ tfsdkprovider.Provider = &provider{}
@@ -152,13 +148,18 @@ func (p *provider) Configure(ctx context.Context, req tfsdkprovider.ConfigureReq
 		resp.Diagnostics.AddWarning("Debug mode enabled", "Debug mode enabled, this will add the Fly-Force-Trace header to all graphql requests")
 	}
 
-	// TODO: Make timeout configurable
-	h := http.Client{Timeout: 60 * time.Second, Transport: &utils.Transport{UnderlyingTransport: http.DefaultTransport, Token: token, Ctx: ctx, EnableDebugTrace: enableTracing}}
-	client := graphql.NewClient(fmt.Sprintf("%s/graphql", baseUrl), &h)
-	clients.gqlClient = *(*gqlClient)(&client)
-
 	fly.SetBaseURL(baseUrl)
-	clients.apiClient = *fly.NewClient(p.token, "terraform-provider-fly", p.version, logger{ctx})
+	clients.apiClient = *fly.NewClientFromOptions(fly.ClientOptions{
+		AccessToken: p.token,
+		//Tokens:           nil,
+		Name:    "terraform-provider-fly",
+		Version: p.version,
+		//BaseURL:          "",
+		Logger:           logger{ctx},
+		EnableDebugTrace: &enableTracing,
+		//Transport:        nil,
+	})
+	clients.gqlClient = clients.apiClient.GenqClient()
 	fly.SetErrorLog(true)
 
 	resp.ResourceData = &clients

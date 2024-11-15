@@ -87,40 +87,6 @@ mutation CreateAppMutation($input: CreateAppInput!) {
 }
 
 
-mutation DeleteAppMutation($name: ID!) {
-    deleteApp(appId: $name) {
-        organization {
-            name
-        }
-    }
-}
-
-query OrgsQuery {
-    organizations {
-        nodes {
-            name
-            id
-        }
-    }
-}
-
-mutation UpdateAutoScaleConfigMutation($id: ID!, $regions: [AutoscaleRegionConfigInput!], $resetRegions: Boolean) {
-    updateAutoscaleConfig(input: {
-        resetRegions: $resetRegions,
-        regions: $regions,
-        appId: $id
-    }) {
-        app {
-            status
-            autoscaling {
-                regions {
-                    code
-                }
-            }
-        }
-    }
-}
-
 query VolumeQuery($app: String, $internal: String!) {
     app(name: $app) {
         volume(internalId: $internal) {
@@ -223,27 +189,6 @@ mutation DeleteCertificate($app: ID!, $hostname: String!) {
         certificate {
             hostname
             id
-        }
-    }
-}
-
-mutation AddWireguardPeer(
-    $input: AddWireGuardPeerInput!
-) {
-    addWireGuardPeer(input: $input) {
-        network
-        endpointip
-        peerip
-        pubkey
-    }
-}
-
-mutation RemoveWireguardPeer(
-    $input: RemoveWireGuardPeerInput!
-){
-    removeWireGuardPeer(input: $input) {
-        organization {
-            name
         }
     }
 }
