@@ -3,10 +3,12 @@ package provider
 import (
 	"context"
 	"fmt"
-	"github.com/hashicorp/terraform-plugin-framework/attr"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -46,55 +48,48 @@ func (vr flyVolumeResource) Metadata(_ context.Context, _ resource.MetadataReque
 	resp.TypeName = "fly_volume"
 }
 
-func (vr flyVolumeResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
-	return tfsdk.Schema{
+func (vr flyVolumeResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+	resp.Schema = schema.Schema{
 		MarkdownDescription: "Fly volume resource",
-		Attributes: map[string]tfsdk.Attribute{
-			"id": {
+		Attributes: map[string]schema.Attribute{
+			"id": schema.StringAttribute{
 				MarkdownDescription: "ID of volume",
-				Type:                types.StringType,
 				Computed:            true,
 			},
-			"app": {
+			"app": schema.StringAttribute{
 				MarkdownDescription: "Name of app to attach",
 				Required:            true,
-				Type:                types.StringType,
-				PlanModifiers:       []tfsdk.AttributePlanModifier{resource.RequiresReplace()},
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
-			"size": {
+			"size": schema.Int64Attribute{
 				MarkdownDescription: "Size of volume in gb",
 				Required:            true,
-				Type:                types.Int64Type,
-				PlanModifiers: []tfsdk.AttributePlanModifier{
-					resource.RequiresReplaceIf(func(ctx context.Context, state, config attr.Value, path path.Path) (replace bool, d diag.Diagnostics) {
+				PlanModifiers: []planmodifier.Int64{
+					int64planmodifier.RequiresReplaceIf(func(ctx context.Context, req planmodifier.Int64Request, resp *int64planmodifier.RequiresReplaceIfFuncResponse) {
 						var size, newSize int64
-						d.Append(tfsdk.ValueAs(ctx, state, &size)...)
-						d.Append(tfsdk.ValueAs(ctx, config, &newSize)...)
-						replace = newSize < size
-						return
+						resp.Diagnostics.Append(tfsdk.ValueAs(ctx, req.StateValue, &size)...)
+						resp.Diagnostics.Append(tfsdk.ValueAs(ctx, req.ConfigValue, &newSize)...)
+						resp.RequiresReplace = newSize < size
 					}, "volumes cannot be made smaller", "volumes cannot be made smaller"),
 				},
 			},
-			"name": {
+			"name": schema.StringAttribute{
 				MarkdownDescription: "name",
-				Type:                types.StringType,
 				Required:            true,
-				PlanModifiers:       []tfsdk.AttributePlanModifier{resource.RequiresReplace()},
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
-			"region": {
+			"region": schema.StringAttribute{
 				MarkdownDescription: "region",
-				Type:                types.StringType,
 				Required:            true,
-				PlanModifiers:       []tfsdk.AttributePlanModifier{resource.RequiresReplace()},
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
-			"encrypted": {
+			"encrypted": schema.BoolAttribute{
 				MarkdownDescription: "Encrypt the volume contents. Defaults to `true`",
-				Type:                types.BoolType,
 				Optional:            true,
 				Computed:            true,
 			},
 		},
-	}, nil
+	}
 }
 
 func (vr flyVolumeResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {

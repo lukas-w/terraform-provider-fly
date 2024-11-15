@@ -3,21 +3,23 @@ package provider
 import (
 	"context"
 	"github.com/fly-apps/terraform-provider-fly/graphql"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"time"
 )
 
 type deployTokenResourceModel struct {
-	Name      string            `tfsdk:"name"`
-	Expiry    DurationAttrValue `tfsdk:"expiry"`
-	App       types.String      `tfsdk:"app"`
-	ID        types.String      `tfsdk:"id"`
-	Token     types.String      `tfsdk:"token"`
-	CreatedAt types.String      `tfsdk:"created_at"`
-	ExpiresAt types.String      `tfsdk:"expires_at"`
+	Name      string               `tfsdk:"name"`
+	Expiry    timetypes.GoDuration `tfsdk:"expiry"`
+	App       types.String         `tfsdk:"app"`
+	ID        types.String         `tfsdk:"id"`
+	Token     types.String         `tfsdk:"token"`
+	CreatedAt types.String         `tfsdk:"created_at"`
+	ExpiresAt types.String         `tfsdk:"expires_at"`
 }
 
 func (m *deployTokenResourceModel) updateFromGql(token graphql.LimitedAccessToken) {
@@ -39,50 +41,43 @@ func (a deployTokenResource) Metadata(ctx context.Context, req resource.Metadata
 	resp.TypeName = "fly_deploy_token"
 }
 
-func (a deployTokenResource) GetSchema(ctx context.Context) (tfsdk.Schema, diag.Diagnostics) {
-	return tfsdk.Schema{
-		Attributes: map[string]tfsdk.Attribute{
-			"name": {
-				Type:          types.StringType,
+func (a deployTokenResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		Attributes: map[string]schema.Attribute{
+			"name": schema.StringAttribute{
 				Required:      true,
-				PlanModifiers: []tfsdk.AttributePlanModifier{resource.RequiresReplace()},
+				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
-			"expiry": {
-				Type:          DurationType{},
+			"expiry": schema.StringAttribute{
+				CustomType:    timetypes.GoDurationType{},
 				Optional:      true,
-				Computed:      true,
-				PlanModifiers: []tfsdk.AttributePlanModifier{resource.RequiresReplace()},
+				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
-			"app": {
-				Type:          types.StringType,
+			"app": schema.StringAttribute{
 				Required:      true,
-				PlanModifiers: []tfsdk.AttributePlanModifier{resource.RequiresReplace()},
+				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
-			"id": {
-				Type:          types.StringType,
+			"id": schema.StringAttribute{
 				Computed:      true,
-				PlanModifiers: []tfsdk.AttributePlanModifier{resource.UseStateForUnknown()},
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
-			"token": {
-				Type:          types.StringType,
+			"token": schema.StringAttribute{
 				Computed:      true,
 				Sensitive:     true,
-				PlanModifiers: []tfsdk.AttributePlanModifier{resource.UseStateForUnknown()},
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
-			"created_at": {
-				Type:          types.StringType,
+			"created_at": schema.StringAttribute{
 				Computed:      true,
 				Sensitive:     true,
-				PlanModifiers: []tfsdk.AttributePlanModifier{resource.UseStateForUnknown()},
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
-			"expires_at": {
-				Type:          types.StringType,
+			"expires_at": schema.StringAttribute{
 				Computed:      true,
 				Sensitive:     true,
-				PlanModifiers: []tfsdk.AttributePlanModifier{resource.UseStateForUnknown()},
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 		},
-	}, nil
+	}
 }
 
 func (a deployTokenResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -98,7 +93,7 @@ func (a deployTokenResource) Create(ctx context.Context, req resource.CreateRequ
 	}
 
 	token, err := graphql.CreateLimitedAccessToken(ctx, a.gqlClient, graphql.CreateLimitedAccessTokenInput{
-		Expiry:         plan.Expiry.String(),
+		Expiry:         plan.Expiry.ValueString(),
 		Name:           plan.Name,
 		OrganizationId: app.Organization.ID,
 		Profile:        "deploy",

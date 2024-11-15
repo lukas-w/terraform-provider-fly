@@ -2,14 +2,14 @@ package provider
 
 import (
 	"fmt"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/superfly/fly-go"
+	"os"
 	"testing"
 )
 
 func TestAccDeployTokenResource_basic(t *testing.T) {
-	appName := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	appName := os.Getenv("FLY_TF_TEST_APP")
 	//tokenName := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 
 	fly.SetBaseURL(baseUrl)
@@ -20,15 +20,11 @@ func TestAccDeployTokenResource_basic(t *testing.T) {
 			{
 				Config: fmt.Sprintf(`
 %s
-resource "fly_app" "test" {
-	name = "%s"
-	org = "%s"
-}
 resource "fly_deploy_token" "test" {
 	name = "a deploy token"
-	app = fly_app.test.id
+	app = "%s"
 }
-`, providerConfig(), appName, getTestOrg()),
+`, providerConfig(), appName),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("fly_deploy_token.test", "name", "a deploy token"),
 					resource.TestCheckResourceAttrSet("fly_deploy_token.test", "id"),

@@ -3,13 +3,13 @@ package provider
 import (
 	"context"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 // V0->V1: Add enable_postgres_consul
 // V1->V2: Add preferred_region, rename enable_postgres_consul to enable_consul
-// V2->V3: Remove machines
+// V2->V3: Remove machines & preferred_region
 
 type flyAppResourceDataV1 struct {
 	Name                 types.String `tfsdk:"name"`
@@ -49,63 +49,53 @@ func (r flyAppResource) UpgradeState(ctx context.Context) map[int64]resource.Sta
 			},
 		},
 		1: {
-			PriorSchema: &tfsdk.Schema{
-				Attributes: map[string]tfsdk.Attribute{
-					"name": {
+			PriorSchema: &schema.Schema{
+				Attributes: map[string]schema.Attribute{
+					"name": schema.StringAttribute{
 						Required: true,
-						Type:     types.StringType,
 					},
-					"org": {
+					"org": schema.StringAttribute{
 						Computed: true,
 						Optional: true,
-						Type:     types.StringType,
 					},
-					"machines": {
+					"machines": schema.BoolAttribute{
 						Optional: true,
 						Computed: true,
-						Type:     types.BoolType,
 					},
-					"secrets": {
+					"secrets": schema.MapNestedAttribute{
 						Optional: true,
-						Attributes: tfsdk.MapNestedAttributes(map[string]tfsdk.Attribute{
-							"value": {
-								Type:      types.StringType,
-								Sensitive: true,
-								Required:  true,
+						NestedObject: schema.NestedAttributeObject{
+							Attributes: map[string]schema.Attribute{
+								"value": schema.StringAttribute{
+									Sensitive: true,
+									Required:  true,
+								},
+								"digest": schema.StringAttribute{
+									Computed: true,
+								},
+								"created_at": schema.StringAttribute{
+									Computed: true,
+								},
 							},
-							"digest": {
-								Type:     types.StringType,
-								Computed: true,
-							},
-							"created_at": {
-								Type:     types.StringType,
-								Computed: true,
-							},
-						}),
+						},
 					},
-					"orgid": {
+					"orgid": schema.StringAttribute{
 						Computed: true,
-						Type:     types.StringType,
 					},
-					"id": {
+					"id": schema.StringAttribute{
 						Computed: true,
-						Type:     types.StringType,
 					},
-					"appurl": {
+					"appurl": schema.StringAttribute{
 						Computed: true,
-						Type:     types.StringType,
 					},
-					"role_id": {
-						Type:     types.StringType,
+					"role_id": schema.StringAttribute{
 						Optional: true,
 					},
-					"enable_postgres_consul": {
-						Type:     types.BoolType,
+					"enable_postgres_consul": schema.BoolAttribute{
 						Optional: true,
 						Computed: true,
 					},
-					"consul_url": {
-						Type:      types.StringType,
+					"consul_url": schema.StringAttribute{
 						Computed:  true,
 						Sensitive: true,
 					},
@@ -128,68 +118,57 @@ func (r flyAppResource) UpgradeState(ctx context.Context) map[int64]resource.Sta
 			},
 		},
 		2: {
-			PriorSchema: &tfsdk.Schema{
-				Attributes: map[string]tfsdk.Attribute{
-					"name": {
+			PriorSchema: &schema.Schema{
+				Attributes: map[string]schema.Attribute{
+					"name": schema.StringAttribute{
 						Required: true,
-						Type:     types.StringType,
 					},
-					"org": {
+					"org": schema.StringAttribute{
 						Computed: true,
 						Optional: true,
-						Type:     types.StringType,
 					},
-					"preferred_region": {
+					"preferred_region": schema.StringAttribute{
 						Optional: true,
 						Computed: true,
-						Type:     types.StringType,
 					},
-					"machines": {
+					"machines": schema.BoolAttribute{
 						Optional: true,
 						Computed: true,
-						Type:     types.BoolType,
 					},
-					"secrets": {
+					"secrets": schema.MapNestedAttribute{
 						Optional: true,
-						Attributes: tfsdk.MapNestedAttributes(map[string]tfsdk.Attribute{
-							"value": {
-								Type:      types.StringType,
-								Sensitive: true,
-								Required:  true,
+						NestedObject: schema.NestedAttributeObject{
+							Attributes: map[string]schema.Attribute{
+								"value": schema.StringAttribute{
+									Sensitive: true,
+									Required:  true,
+								},
+								"digest": schema.StringAttribute{
+									Computed: true,
+								},
+								"created_at": schema.StringAttribute{
+									Computed: true,
+								},
 							},
-							"digest": {
-								Type:     types.StringType,
-								Computed: true,
-							},
-							"created_at": {
-								Type:     types.StringType,
-								Computed: true,
-							},
-						}),
+						},
 					},
-					"orgid": {
+					"orgid": schema.StringAttribute{
 						Computed: true,
-						Type:     types.StringType,
 					},
-					"id": {
+					"id": schema.StringAttribute{
 						Computed: true,
-						Type:     types.StringType,
 					},
-					"appurl": {
+					"appurl": schema.StringAttribute{
 						Computed: true,
-						Type:     types.StringType,
 					},
-					"role_id": {
-						Type:     types.StringType,
+					"role_id": schema.StringAttribute{
 						Optional: true,
 					},
-					"enable_postgres_consul": {
-						Type:     types.BoolType,
+					"enable_postgres_consul": schema.BoolAttribute{
 						Optional: true,
 						Computed: true,
 					},
-					"consul_url": {
-						Type:      types.StringType,
+					"consul_url": schema.StringAttribute{
 						Computed:  true,
 						Sensitive: true,
 					},
@@ -199,16 +178,15 @@ func (r flyAppResource) UpgradeState(ctx context.Context) map[int64]resource.Sta
 				var d flyAppResourceDataV2
 				resp.Diagnostics.Append(req.State.Get(ctx, &d)...)
 				resp.Diagnostics.Append(resp.State.Set(ctx, flyAppResourceData{
-					Name:            d.Name,
-					Org:             d.Org,
-					OrgId:           d.OrgId,
-					PreferredRegion: d.PreferredRegion,
-					AppUrl:          d.AppUrl,
-					Id:              d.Id,
-					Secrets:         d.Secrets,
-					RoleId:          d.RoleId,
-					EnableConsul:    d.EnableConsul,
-					ConsulUrl:       d.ConsulUrl,
+					Name:         d.Name,
+					Org:          d.Org,
+					OrgId:        d.OrgId,
+					AppUrl:       d.AppUrl,
+					Id:           d.Id,
+					Secrets:      d.Secrets,
+					RoleId:       d.RoleId,
+					EnableConsul: d.EnableConsul,
+					ConsulUrl:    d.ConsulUrl,
 				})...)
 			},
 		},

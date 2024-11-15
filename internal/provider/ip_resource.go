@@ -5,11 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"github.com/fly-apps/terraform-provider-fly/graphql"
-	"github.com/fly-apps/terraform-provider-fly/internal/provider/modifiers"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/vektah/gqlparser/v2/gqlerror"
@@ -62,50 +64,42 @@ func (ir flyIpResource) Metadata(_ context.Context, _ resource.MetadataRequest, 
 	resp.TypeName = "fly_ip"
 }
 
-func (flyIpResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
-	return tfsdk.Schema{
+func (flyIpResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+	resp.Schema = schema.Schema{
 		MarkdownDescription: "Fly ip resource",
-		Attributes: map[string]tfsdk.Attribute{
-			"address": {
+		Attributes: map[string]schema.Attribute{
+			"address": schema.StringAttribute{
 				MarkdownDescription: "IP address",
-				Type:                types.StringType,
 				Computed:            true,
 			},
-			"app": {
+			"app": schema.StringAttribute{
 				MarkdownDescription: "Name of app to attach to",
 				Required:            true,
-				Type:                types.StringType,
-				PlanModifiers:       []tfsdk.AttributePlanModifier{resource.RequiresReplace()},
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
-			"id": {
+			"id": schema.StringAttribute{
 				MarkdownDescription: "ID of address",
 				Computed:            true,
-				Type:                types.StringType,
-				PlanModifiers:       []tfsdk.AttributePlanModifier{resource.RequiresReplace()},
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
-			"type": {
+			"type": schema.StringAttribute{
 				MarkdownDescription: "v4 or v6",
-				Type:                types.StringType,
 				Required:            true,
-				PlanModifiers:       []tfsdk.AttributePlanModifier{resource.RequiresReplace()},
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
-			"private": {
-				Type:          types.BoolType,
-				Optional:      true,
-				Computed:      true,
-				PlanModifiers: []tfsdk.AttributePlanModifier{modifiers.Default(types.BoolValue(false))},
+			"private": schema.BoolAttribute{
+				Optional: true,
+				Computed: true,
+				Default:  booldefault.StaticBool(false),
 			},
-			"region": {
+			"region": schema.StringAttribute{
 				MarkdownDescription: "region",
-				Type:                types.StringType,
 				Computed:            true,
-				PlanModifiers: tfsdk.AttributePlanModifiers{
-					resource.RequiresReplace(),
-					modifiers.Default(types.StringValue("global")),
-				},
+				Default:             stringdefault.StaticString("global"),
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 		},
-	}, nil
+	}
 }
 
 func (ir flyIpResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {

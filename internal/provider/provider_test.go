@@ -1,8 +1,10 @@
 package provider
 
 import (
+	"context"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
+	"github.com/superfly/fly-go"
 	"os"
 	"testing"
 )
@@ -20,6 +22,11 @@ func testAccPreCheck(t *testing.T) {
 	if !hasApp {
 		t.Fatalf("Need app in FLY_TF_TEST_APP")
 	}
+}
+
+func getFlyClient() fly.Client {
+	fly.SetBaseURL(baseUrl)
+	return *fly.NewClient(os.Getenv("FLY_API_TOKEN"), "terraform-provider-fly", "test", logger{context.Background()})
 }
 
 func getTestOrg() string {

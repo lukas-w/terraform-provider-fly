@@ -4,11 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/fly-apps/terraform-provider-fly/internal/provider/modifiers"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setdefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/superfly/flyctl/gql"
 	"github.com/vektah/gqlparser/v2/gqlerror"
@@ -37,66 +41,54 @@ func (r redisResource) Metadata(ctx context.Context, request resource.MetadataRe
 	response.TypeName = "fly_redis"
 }
 
-func (r redisResource) GetSchema(ctx context.Context) (tfsdk.Schema, diag.Diagnostics) {
-	return tfsdk.Schema{
-		Attributes: map[string]tfsdk.Attribute{
-			"org": {
+func (r redisResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		Attributes: map[string]schema.Attribute{
+			"org": schema.StringAttribute{
 				Description:   "Organization slug",
-				Type:          types.StringType,
 				Required:      true,
-				PlanModifiers: []tfsdk.AttributePlanModifier{resource.RequiresReplace()},
+				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
-			"name": {
-				Type:          types.StringType,
+			"name": schema.StringAttribute{
 				Optional:      true,
 				Computed:      true,
 				Description:   "The name of your Redis database. Leave blank to generate one.",
-				PlanModifiers: []tfsdk.AttributePlanModifier{resource.RequiresReplace()},
+				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
-			"plan": {
-				Type:        types.StringType,
+			"plan": schema.StringAttribute{
 				Required:    true,
 				Description: "Plan name. Use `fly redis plans` to list available plans.",
 			},
-			"primary_region": {
+			"primary_region": schema.StringAttribute{
 				Description:   "Primary region, can't be changed later",
-				Type:          types.StringType,
 				Required:      true,
-				PlanModifiers: []tfsdk.AttributePlanModifier{resource.RequiresReplace()},
+				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
-			"read_regions": {
-				Type:     types.SetType{ElemType: types.StringType},
-				Optional: true,
-				Computed: true,
-				PlanModifiers: []tfsdk.AttributePlanModifier{
-					modifiers.Default(types.SetValueMust(types.StringType, []attr.Value{})),
-				},
+			"read_regions": schema.SetAttribute{
+				ElementType: types.StringType,
+				Optional:    true,
+				Computed:    true,
+				Default:     setdefault.StaticValue(types.SetValueMust(types.StringType, []attr.Value{})),
 			},
-			"eviction": {
-				Type:     types.BoolType,
-				Optional: true,
-				Computed: true,
-				PlanModifiers: []tfsdk.AttributePlanModifier{
-					resource.RequiresReplace(),
-					modifiers.Default(types.BoolValue(false)),
-				},
+			"eviction": schema.BoolAttribute{
+				Optional:      true,
+				Computed:      true,
+				Default:       booldefault.StaticBool(false),
+				PlanModifiers: []planmodifier.Bool{boolplanmodifier.RequiresReplace()},
 			},
-			"public_url": {
-				Type:      types.StringType,
+			"public_url": schema.StringAttribute{
 				Computed:  true,
 				Sensitive: true,
 			},
-			"password": {
-				Type:      types.StringType,
+			"password": schema.StringAttribute{
 				Sensitive: true,
 				Computed:  true,
 			},
-			"private_ip": {
-				Type:     types.StringType,
+			"private_ip": schema.StringAttribute{
 				Computed: true,
 			},
 		},
-	}, nil
+	}
 }
 
 func (r redisResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {

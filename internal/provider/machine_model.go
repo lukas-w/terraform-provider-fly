@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"github.com/fly-apps/terraform-provider-fly/internal/utils"
+	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -68,12 +69,12 @@ type TfMetric struct {
 }
 
 type TfCheck struct {
-	Type       types.String      `tfsdk:"type"`
-	Port       types.Int64       `tfsdk:"port"`
-	Interval   DurationAttrValue `tfsdk:"interval"`
-	Timeout    DurationAttrValue `tfsdk:"timeout"`
-	HttpMethod types.String      `tfsdk:"http_method"`
-	HttpPath   types.String      `tfsdk:"http_path"`
+	Type       types.String         `tfsdk:"type"`
+	Port       types.Int64          `tfsdk:"port"`
+	Interval   timetypes.GoDuration `tfsdk:"interval"`
+	Timeout    timetypes.GoDuration `tfsdk:"timeout"`
+	HttpMethod types.String         `tfsdk:"http_method"`
+	HttpPath   types.String         `tfsdk:"http_path"`
 }
 
 type TfMachineMount struct {
@@ -130,14 +131,14 @@ func (c *TfCheck) updateFromApi(ac fly.MachineCheck, _ *diag.Diagnostics) {
 	}
 
 	if ac.Interval == nil {
-		c.Interval = DurationNull()
-	} else if c.Interval.IsUnknown() || c.Interval.IsNull() || !c.Interval.EqualDuration(ac.Interval.Duration) {
-		c.Interval = DurationValueFromDuration(ac.Interval.Duration)
+		c.Interval = timetypes.NewGoDurationNull()
+	} else if c.Interval.IsUnknown() || c.Interval.IsNull() {
+		c.Interval = timetypes.NewGoDurationValue(ac.Interval.Duration)
 	}
 	if ac.Timeout == nil {
-		c.Timeout = DurationNull()
-	} else if c.Timeout.IsUnknown() || c.Timeout.IsNull() || !c.Timeout.EqualDuration(ac.Timeout.Duration) {
-		c.Timeout = DurationValueFromDuration(ac.Timeout.Duration)
+		c.Timeout = timetypes.NewGoDurationNull()
+	} else if c.Timeout.IsUnknown() || c.Timeout.IsNull() {
+		c.Timeout = timetypes.NewGoDurationValue(ac.Timeout.Duration)
 	}
 	if ac.HTTPPath != nil {
 		c.HttpPath = types.StringValue(*ac.HTTPPath)
@@ -356,15 +357,10 @@ func (d *flyMachineConfigData) toApiConfig(ctx context.Context, diags *diag.Diag
 			Type: &checkType,
 			Port: &port,
 		}
-		if c.Interval.IsUnknown() || c.Interval.IsNull() {
-			ac.Interval = nil
-		} else {
-			ac.Interval = &fly.Duration{Duration: *c.Interval.GetDuration()}
-		}
-		if c.Timeout.IsUnknown() || c.Timeout.IsNull() {
-			ac.Timeout = nil
-		} else {
-			ac.Timeout = &fly.Duration{Duration: *c.Timeout.GetDuration()}
+		ac.Interval = ToFlyDurationOrNil(c.Interval, diags)
+		ac.Timeout = ToFlyDurationOrNil(c.Timeout, diags)
+		if diags.HasError() {
+			return nil
 		}
 		if !c.HttpPath.IsNull() && !c.HttpPath.IsUnknown() {
 			ac.HTTPPath = fly.StringPointer(c.HttpPath.ValueString())

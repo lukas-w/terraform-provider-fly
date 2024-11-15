@@ -11,6 +11,11 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/superfly/fly-go"
@@ -45,16 +50,15 @@ type secretMap map[string]appSecret
 //type secretMap types.Map
 
 type flyAppResourceData struct {
-	Name            types.String `tfsdk:"name"`
-	Org             types.String `tfsdk:"org"`
-	OrgId           types.String `tfsdk:"orgid"`
-	PreferredRegion types.String `tfsdk:"preferred_region"`
-	AppUrl          types.String `tfsdk:"appurl"`
-	Id              types.String `tfsdk:"id"`
-	Secrets         secretMap    `tfsdk:"secrets"`
-	RoleId          types.String `tfsdk:"role_id"`
-	EnableConsul    types.Bool   `tfsdk:"enable_consul"`
-	ConsulUrl       types.String `tfsdk:"consul_url"`
+	Name         types.String `tfsdk:"name"`
+	Org          types.String `tfsdk:"org"`
+	OrgId        types.String `tfsdk:"orgid"`
+	AppUrl       types.String `tfsdk:"appurl"`
+	Id           types.String `tfsdk:"id"`
+	Secrets      secretMap    `tfsdk:"secrets"`
+	RoleId       types.String `tfsdk:"role_id"`
+	EnableConsul types.Bool   `tfsdk:"enable_consul"`
+	ConsulUrl    types.String `tfsdk:"consul_url"`
 }
 
 func (d *flyAppResourceData) setSecret(name string, secret appSecret) {
@@ -76,7 +80,6 @@ func (d *flyAppResourceData) updateFromApi(a graphql.AppFragment) {
 	d.Name = types.StringValue(a.Name)
 	d.Org = types.StringValue(a.Organization.Slug)
 	d.OrgId = types.StringValue(a.Organization.Id)
-	d.PreferredRegion = types.StringValue(a.Autoscaling.PreferredRegion)
 	d.AppUrl = types.StringValue(a.AppUrl)
 	d.Id = types.StringValue(a.Id)
 	if a.Role != nil && a.Role.GetName() != "" {
@@ -127,116 +130,98 @@ func (r flyAppResource) Metadata(_ context.Context, _ resource.MetadataRequest, 
 	resp.TypeName = "fly_app"
 }
 
-func (r flyAppResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
-	var secretValueUnchanged modifiers.UseStateForUnknownIfFunc = func(ctx context.Context, req tfsdk.ModifyAttributePlanRequest) (ok bool, diags diag.Diagnostics) {
-		valuePath := req.AttributePath.ParentPath().AtName("value")
+func (r flyAppResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+	var secretValueUnchanged modifiers.UseStateForUnknownIfFunc = func(ctx context.Context, req planmodifier.StringRequest) (ok bool, diags diag.Diagnostics) {
+		valuePath := req.Path.ParentPath().AtName("value")
 		var stateValue, configValue types.String
 		diags.Append(req.State.GetAttribute(ctx, valuePath, &stateValue)...)
 		diags.Append(req.Config.GetAttribute(ctx, valuePath, &configValue)...)
 		return stateValue.Equal(configValue), diags
 	}
 
-	var orgUnchanged modifiers.UseStateForUnknownIfFunc = func(ctx context.Context, req tfsdk.ModifyAttributePlanRequest) (ok bool, diags diag.Diagnostics) {
+	var orgUnchanged modifiers.UseStateForUnknownIfFunc = func(ctx context.Context, req planmodifier.StringRequest) (ok bool, diags diag.Diagnostics) {
 		var stateOrg, planOrg types.String
 		diags.Append(req.State.GetAttribute(ctx, path.Root("org"), &stateOrg)...)
 		diags.Append(req.Plan.GetAttribute(ctx, path.Root("org"), &planOrg)...)
 		return stateOrg.Equal(planOrg), diags
 	}
 
-	return tfsdk.Schema{
+	resp.Schema = schema.Schema{
 		Version:             3,
 		MarkdownDescription: "Fly app resource",
-		Attributes: map[string]tfsdk.Attribute{
-			"name": {
+		Attributes: map[string]schema.Attribute{
+			"name": schema.StringAttribute{
 				MarkdownDescription: "Name of application",
 				Required:            true,
-				Type:                types.StringType,
-				PlanModifiers:       []tfsdk.AttributePlanModifier{resource.RequiresReplace()},
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
-			"org": {
+			"org": schema.StringAttribute{
 				Computed:            true,
 				Optional:            true,
 				MarkdownDescription: "Optional org slug to operate upon",
-				Type:                types.StringType,
 			},
-			"preferred_region": {
-				Optional:      true,
-				Computed:      true,
-				Type:          types.StringType,
-				PlanModifiers: []tfsdk.AttributePlanModifier{resource.RequiresReplace()},
-			},
-			"secrets": {
+			"secrets": schema.MapNestedAttribute{
 				Optional:    true,
 				Description: "Secret environment variables. Keys are case sensitive and are used as environment variable names. Does not override existing secrets added outside of Terraform.",
-				Attributes: tfsdk.MapNestedAttributes(map[string]tfsdk.Attribute{
-					"value": {
-						Type:      types.StringType,
-						Sensitive: true,
-						Required:  true,
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"value": schema.StringAttribute{
+							Sensitive: true,
+							Required:  true,
+						},
+						"digest": schema.StringAttribute{
+							Computed:      true,
+							PlanModifiers: []planmodifier.String{modifiers.UseStateForUnknownIf(secretValueUnchanged)},
+						},
+						"created_at": schema.StringAttribute{
+							Computed:      true,
+							PlanModifiers: []planmodifier.String{modifiers.UseStateForUnknownIf(secretValueUnchanged)},
+						},
 					},
-					"digest": {
-						Type:          types.StringType,
-						Computed:      true,
-						PlanModifiers: []tfsdk.AttributePlanModifier{modifiers.UseStateForUnknownIf(secretValueUnchanged)},
-					},
-					"created_at": {
-						Type:          types.StringType,
-						Computed:      true,
-						PlanModifiers: []tfsdk.AttributePlanModifier{modifiers.UseStateForUnknownIf(secretValueUnchanged)},
-					},
-				}),
-			},
-			"orgid": {
-				Computed:            true,
-				MarkdownDescription: "readonly orgid",
-				Type:                types.StringType,
-				PlanModifiers:       []tfsdk.AttributePlanModifier{modifiers.UseStateForUnknownIf(orgUnchanged)},
-			},
-			"id": {
-				Computed:            true,
-				MarkdownDescription: "readonly app id",
-				Type:                types.StringType,
-				PlanModifiers:       []tfsdk.AttributePlanModifier{resource.UseStateForUnknown()},
-			},
-			"appurl": {
-				Computed:            true,
-				MarkdownDescription: "readonly appUrl",
-				Type:                types.StringType,
-				PlanModifiers:       []tfsdk.AttributePlanModifier{resource.UseStateForUnknown()},
-			},
-			"role_id": {
-				Type:     types.StringType,
-				Optional: true,
-				PlanModifiers: []tfsdk.AttributePlanModifier{
-					modifiers.Default(types.StringNull()),
-					resource.RequiresReplace(),
 				},
 			},
-			"enable_consul": {
-				Type:     types.BoolType,
+			"orgid": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "readonly orgid",
+				PlanModifiers:       []planmodifier.String{modifiers.UseStateForUnknownIf(orgUnchanged)},
+			},
+			"id": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "readonly app id",
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+			},
+			"appurl": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "readonly appUrl",
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+			},
+			"role_id": schema.StringAttribute{
+				Optional:      true,
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+			},
+			"enable_consul": schema.BoolAttribute{
 				Optional: true,
 				Computed: true,
-				PlanModifiers: []tfsdk.AttributePlanModifier{
-					modifiers.Default(types.BoolValue(false)),
-					resource.RequiresReplaceIf(
-						func(ctx context.Context, state, config attr.Value, path path.Path) (replace bool, diags diag.Diagnostics) {
+				Default:  booldefault.StaticBool(false),
+				PlanModifiers: []planmodifier.Bool{
+					boolplanmodifier.RequiresReplaceIf(
+						func(ctx context.Context, req planmodifier.BoolRequest, resp *boolplanmodifier.RequiresReplaceIfFuncResponse) {
 							var before, after types.Bool
-							diags.Append(tfsdk.ValueAs(ctx, state, &before)...)
-							diags.Append(tfsdk.ValueAs(ctx, config, &after)...)
-							return before.Equal(types.BoolValue(true)) && after.Equal(types.BoolValue(false)), diags
+							resp.Diagnostics.Append(tfsdk.ValueAs(ctx, req.StateValue, &before)...)
+							resp.Diagnostics.Append(tfsdk.ValueAs(ctx, req.ConfigValue, &after)...)
+							resp.RequiresReplace = before.Equal(types.BoolValue(true)) && after.Equal(types.BoolValue(false))
 						},
 						"consul cannot be disabled after it was enabled",
 						"consul cannot be disabled after it was enabled",
 					),
 				},
 			},
-			"consul_url": {
-				Type:      types.StringType,
+			"consul_url": schema.StringAttribute{
 				Computed:  true,
 				Sensitive: true,
 			},
 		},
-	}, nil
+	}
 }
 
 func newAppResource() resource.Resource {
@@ -269,9 +254,6 @@ func (r flyAppResource) Create(ctx context.Context, req resource.CreateRequest, 
 		OrganizationId: data.OrgId.ValueString(),
 		Runtime:        graphql.RuntimeTypeFirecracker,
 		AppRoleId:      data.RoleId.ValueString(),
-	}
-	if !data.PreferredRegion.IsNull() {
-		createAppInput.PreferredRegion = data.PreferredRegion.ValueString()
 	}
 	mresp, err := graphql.CreateAppMutation(context.Background(), r.gqlClient, createAppInput)
 	if err != nil {

@@ -2,9 +2,10 @@ package provider
 
 import (
 	"context"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/superfly/fly-go"
 )
@@ -27,28 +28,25 @@ func (f flyWireguardTokenResource) Metadata(_ context.Context, _ resource.Metada
 	resp.TypeName = "fly_wireguard_token"
 }
 
-func (f flyWireguardTokenResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
-	return tfsdk.Schema{
-		Attributes: map[string]tfsdk.Attribute{
-			"organization": {
+func (f flyWireguardTokenResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		Attributes: map[string]schema.Attribute{
+			"organization": schema.StringAttribute{
 				MarkdownDescription: "ID of organization for the token to allow connections into",
-				Type:                types.StringType,
 				Required:            true,
-				PlanModifiers:       []tfsdk.AttributePlanModifier{resource.RequiresReplace()},
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
-			"name": {
+			"name": schema.StringAttribute{
 				MarkdownDescription: "Optional name for the token",
-				Type:                types.StringType,
 				Optional:            true,
-				PlanModifiers:       []tfsdk.AttributePlanModifier{resource.RequiresReplace()},
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
-			"token": {
-				Type:      types.StringType,
+			"token": schema.StringAttribute{
 				Computed:  true,
 				Sensitive: true,
 			},
 		},
-	}, nil
+	}
 }
 
 func (f flyWireguardTokenResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {

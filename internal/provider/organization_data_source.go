@@ -4,8 +4,7 @@ import (
 	"context"
 	"github.com/fly-apps/terraform-provider-fly/graphql"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"time"
 )
@@ -62,59 +61,52 @@ func (s organizationDataSource) Metadata(ctx context.Context, request datasource
 	response.TypeName = "fly_organization"
 }
 
-func (s organizationDataSource) GetSchema(ctx context.Context) (tfsdk.Schema, diag.Diagnostics) {
-	return tfsdk.Schema{
-		Attributes: map[string]tfsdk.Attribute{
-			"name": {
-				Type:     types.StringType,
+func (s organizationDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		Attributes: map[string]schema.Attribute{
+			"name": schema.StringAttribute{
 				Optional: true,
 				Computed: true,
 			},
-			"slug": {
-				Type:     types.StringType,
+			"slug": schema.StringAttribute{
 				Optional: true,
 				Computed: true,
 			},
-			"id": {
-				Type:     types.StringType,
+			"id": schema.StringAttribute{
 				Optional: true,
 				Computed: true,
 			},
-			"type": {
-				Type:                types.StringType,
+			"type": schema.StringAttribute{
 				Computed:            true,
 				Description:         "Organization type, either \"PRIVATE\" or \"SHARED\"",
 				MarkdownDescription: "Organization type, either `\"PRIVATE\"` or `\"SHARED\"`",
 			},
-			"members": {
+			"members": schema.ListNestedAttribute{
 				Computed: true,
-				Attributes: tfsdk.ListNestedAttributes(map[string]tfsdk.Attribute{
-					"id": {
-						Type:     types.StringType,
-						Computed: true,
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"id": schema.StringAttribute{
+							Computed: true,
+						},
+						"name": schema.StringAttribute{
+							Computed: true,
+						},
+						"email": schema.StringAttribute{
+							Computed: true,
+						},
+						"joined_at": schema.StringAttribute{
+							Computed: true,
+						},
+						"role": schema.StringAttribute{
+							Computed:            true,
+							Description:         "Member role, either \"ADMIN\" or \"MEMBER\"",
+							MarkdownDescription: "Member role, either `\"ADMIN\"` or `\"MEMBER\"`",
+						},
 					},
-					"name": {
-						Type:     types.StringType,
-						Computed: true,
-					},
-					"email": {
-						Type:     types.StringType,
-						Computed: true,
-					},
-					"joined_at": {
-						Type:     types.StringType,
-						Computed: true,
-					},
-					"role": {
-						Type:                types.StringType,
-						Computed:            true,
-						Description:         "Member role, either \"ADMIN\" or \"MEMBER\"",
-						MarkdownDescription: "Member role, either `\"ADMIN\"` or `\"MEMBER\"`",
-					},
-				}),
+				},
 			},
 		},
-	}, nil
+	}
 }
 
 func (s organizationDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {

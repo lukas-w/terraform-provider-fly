@@ -6,6 +6,7 @@ import (
 	"github.com/Khan/genqlient/graphql"
 	"github.com/fly-apps/terraform-provider-fly/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/superfly/fly-go"
@@ -17,7 +18,6 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	tfsdkprovider "github.com/hashicorp/terraform-plugin-framework/provider"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -191,21 +191,23 @@ func (p *provider) DataSources(ctx context.Context) []func() datasource.DataSour
 	}
 }
 
-func (p *provider) GetSchema(ctx context.Context) (tfsdk.Schema, diag.Diagnostics) {
-	return tfsdk.Schema{
-		Attributes: map[string]tfsdk.Attribute{
-			"fly_api_token": {
+func (p *provider) Metadata(ctx context.Context, req tfsdkprovider.MetadataRequest, resp *tfsdkprovider.MetadataResponse) {
+	resp.TypeName = "fly"
+}
+
+func (p *provider) Schema(ctx context.Context, req tfsdkprovider.SchemaRequest, resp *tfsdkprovider.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		Attributes: map[string]schema.Attribute{
+			"fly_api_token": schema.StringAttribute{
 				MarkdownDescription: "fly.io api token. If not set checks env for FLY_API_TOKEN",
 				Optional:            true,
-				Type:                types.StringType,
 			},
-			"fly_http_endpoint": {
+			"fly_http_endpoint": schema.StringAttribute{
 				MarkdownDescription: "Where the clients should look to find the fly http endpoint",
 				Optional:            true,
-				Type:                types.StringType,
 			},
 		},
-	}, nil
+	}
 }
 
 func New(version string) func() tfsdkprovider.Provider {

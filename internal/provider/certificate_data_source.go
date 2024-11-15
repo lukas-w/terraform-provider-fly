@@ -5,8 +5,7 @@ import (
 	"errors"
 	"github.com/fly-apps/terraform-provider-fly/graphql"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 )
@@ -28,47 +27,40 @@ func (d certDataSource) Metadata(_ context.Context, _ datasource.MetadataRequest
 	resp.TypeName = "fly_cert"
 }
 
-func (d certDataSource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
-	return tfsdk.Schema{
+func (d certDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+	resp.Schema = schema.Schema{
 		MarkdownDescription: "Fly certificate data source",
-		Attributes: map[string]tfsdk.Attribute{
-			"app": {
+		Attributes: map[string]schema.Attribute{
+			"app": schema.StringAttribute{
 				MarkdownDescription: "Name of app that is attacjed",
 				Required:            true,
-				Type:                types.StringType,
 			},
-			"id": {
+			"id": schema.StringAttribute{
 				MarkdownDescription: "ID of address",
 				Computed:            true,
-				Type:                types.StringType,
 			},
-			"dnsvalidationinstructions": {
+			"dnsvalidationinstructions": schema.StringAttribute{
 				MarkdownDescription: "DnsValidationHostname",
-				Type:                types.StringType,
 				Computed:            true,
 			},
-			"dnsvalidationtarget": {
+			"dnsvalidationtarget": schema.StringAttribute{
 				MarkdownDescription: "DnsValidationTarget",
-				Type:                types.StringType,
 				Computed:            true,
 			},
-			"dnsvalidationhostname": {
+			"dnsvalidationhostname": schema.StringAttribute{
 				MarkdownDescription: "DnsValidationHostname",
-				Type:                types.StringType,
 				Computed:            true,
 			},
-			"check": {
+			"check": schema.BoolAttribute{
 				MarkdownDescription: "check",
-				Type:                types.BoolType,
 				Computed:            true,
 			},
-			"hostname": {
+			"hostname": schema.StringAttribute{
 				MarkdownDescription: "hostname",
-				Type:                types.StringType,
 				Required:            true,
 			},
 		},
-	}, nil
+	}
 }
 
 func newCertDataSource() datasource.DataSource {

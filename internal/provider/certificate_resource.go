@@ -5,10 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"github.com/fly-apps/terraform-provider-fly/graphql"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/vektah/gqlparser/v2/gqlerror"
@@ -40,49 +41,42 @@ func (cr flyCertResource) Metadata(_ context.Context, _ resource.MetadataRequest
 	resp.TypeName = "fly_cert"
 }
 
-func (flyCertResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
-	return tfsdk.Schema{
+func (flyCertResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+	resp.Schema = schema.Schema{
 		MarkdownDescription: "Fly certificate resource",
-		Attributes: map[string]tfsdk.Attribute{
-			"app": {
+		Attributes: map[string]schema.Attribute{
+			"app": schema.StringAttribute{
 				MarkdownDescription: "Name of app to attach",
 				Required:            true,
-				Type:                types.StringType,
-				PlanModifiers:       []tfsdk.AttributePlanModifier{resource.RequiresReplace()},
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
-			"hostname": {
+			"hostname": schema.StringAttribute{
 				MarkdownDescription: "hostname",
-				Type:                types.StringType,
 				Required:            true,
-				PlanModifiers:       []tfsdk.AttributePlanModifier{resource.RequiresReplace()},
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
-			"id": {
+			"id": schema.StringAttribute{
 				MarkdownDescription: "ID of address",
 				Computed:            true,
-				Type:                types.StringType,
 			},
-			"dns_validation_instructions": {
+			"dns_validation_instructions": schema.StringAttribute{
 				MarkdownDescription: "DnsValidationHostname",
-				Type:                types.StringType,
 				Computed:            true,
 			},
-			"dns_validation_target": {
+			"dns_validation_target": schema.StringAttribute{
 				MarkdownDescription: "DnsValidationTarget",
-				Type:                types.StringType,
 				Computed:            true,
 			},
-			"dns_validation_hostname": {
+			"dns_validation_hostname": schema.StringAttribute{
 				MarkdownDescription: "DnsValidationHostname",
-				Type:                types.StringType,
 				Computed:            true,
 			},
-			"check": {
+			"check": schema.BoolAttribute{
 				MarkdownDescription: "check",
-				Type:                types.BoolType,
 				Computed:            true,
 			},
 		},
-	}, nil
+	}
 }
 
 func (cr flyCertResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {

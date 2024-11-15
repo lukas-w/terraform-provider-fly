@@ -5,7 +5,7 @@ import (
 	"github.com/fly-apps/terraform-provider-fly/graphql"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"time"
 )
@@ -26,32 +26,27 @@ func (r secretResource) Metadata(_ context.Context, _ resource.MetadataRequest, 
 	resp.TypeName = "fly_secret"
 }
 
-func (r secretResource) GetSchema(ctx context.Context) (tfsdk.Schema, diag.Diagnostics) {
-	return tfsdk.Schema{
-		Attributes: map[string]tfsdk.Attribute{
-			"app": {
-				Type:     types.StringType,
+func (r secretResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		Attributes: map[string]schema.Attribute{
+			"app": schema.StringAttribute{
 				Required: true,
 			},
-			"name": {
-				Type:     types.StringType,
+			"name": schema.StringAttribute{
 				Required: true,
 			},
-			"value": {
-				Type:      types.StringType,
+			"value": schema.StringAttribute{
 				Required:  true,
 				Sensitive: true,
 			},
-			"digest": {
-				Type:     types.StringType,
+			"digest": schema.StringAttribute{
 				Computed: true,
 			},
-			"created_at": {
-				Type:     types.StringType,
+			"created_at": schema.StringAttribute{
 				Computed: true,
 			},
 		},
-	}, nil
+	}
 }
 
 func newFlySecretResource() resource.Resource {

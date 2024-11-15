@@ -3,12 +3,22 @@ package provider
 import (
 	"context"
 	"fmt"
-	"github.com/fly-apps/terraform-provider-fly/internal/provider/modifiers"
+	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listdefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/mapdefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/mapplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectdefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -48,331 +58,305 @@ func (mr flyMachineResource) Metadata(_ context.Context, _ resource.MetadataRequ
 	resp.TypeName = "fly_machine"
 }
 
-func (flyMachineResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
-	return tfsdk.Schema{
+func (flyMachineResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+	resp.Schema = schema.Schema{
 		MarkdownDescription: "Fly machine resource",
 		Version:             1,
-		Attributes: map[string]tfsdk.Attribute{
-			"name": {
+		Attributes: map[string]schema.Attribute{
+			"name": schema.StringAttribute{
 				MarkdownDescription: "machine name",
 				Optional:            true,
 				Computed:            true,
-				PlanModifiers: tfsdk.AttributePlanModifiers{
-					resource.RequiresReplace(),
-					resource.UseStateForUnknown(),
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+					stringplanmodifier.UseStateForUnknown(),
 				},
-				Type: types.StringType,
 			},
-			"region": {
+			"region": schema.StringAttribute{
 				MarkdownDescription: "machine region",
 				Required:            true,
-				PlanModifiers: tfsdk.AttributePlanModifiers{
-					resource.RequiresReplace(),
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
 				},
-				Type: types.StringType,
 			},
-			"id": {
+			"id": schema.StringAttribute{
 				MarkdownDescription: "machine id",
 				Computed:            true,
-				Type:                types.StringType,
-				PlanModifiers:       []tfsdk.AttributePlanModifier{resource.UseStateForUnknown()},
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
-			"app": {
+			"app": schema.StringAttribute{
 				MarkdownDescription: "fly app",
 				Required:            true,
-				Type:                types.StringType,
-				PlanModifiers:       tfsdk.AttributePlanModifiers{resource.RequiresReplace()},
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
-			"private_ip": {
+			"private_ip": schema.StringAttribute{
 				MarkdownDescription: "Private IP",
 				Computed:            true,
-				Type:                types.StringType,
-				PlanModifiers:       []tfsdk.AttributePlanModifier{resource.UseStateForUnknown()},
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
-			"config": {
+			"config": schema.SingleNestedAttribute{
 				Required: true,
-				Attributes: tfsdk.SingleNestedAttributes(map[string]tfsdk.Attribute{
-					"init": {
+				Attributes: map[string]schema.Attribute{
+					"init": schema.SingleNestedAttribute{
 						Optional: true,
-						Attributes: tfsdk.SingleNestedAttributes(map[string]tfsdk.Attribute{
-							"cmd": {
+						Attributes: map[string]schema.Attribute{
+							"cmd": schema.ListAttribute{
 								MarkdownDescription: "cmd",
 								Optional:            true,
 								//Computed:            true,
-								Type: types.ListType{ElemType: types.StringType},
+								ElementType: types.StringType,
 							},
-							"entrypoint": {
+							"entrypoint": schema.ListAttribute{
 								MarkdownDescription: "image entrypoint",
 								Optional:            true,
 								//Computed:            true,
-								Type: types.ListType{ElemType: types.StringType},
+								ElementType: types.StringType,
 							},
-							"exec": {
+							"exec": schema.ListAttribute{
 								MarkdownDescription: "exec command",
 								Optional:            true,
 								//Computed:            true,
-								Type: types.ListType{ElemType: types.StringType},
+								ElementType: types.StringType,
 							},
-						}),
+						},
 					},
-					"image": {
+					"image": schema.StringAttribute{
 						MarkdownDescription: "docker image",
 						Required:            true,
-						Type:                types.StringType,
 					},
-					"guest": {
+					"guest": schema.SingleNestedAttribute{
 						Optional: true,
 						Computed: true,
-						Attributes: tfsdk.SingleNestedAttributes(map[string]tfsdk.Attribute{
-							"cpu_kind": {
+						Attributes: map[string]schema.Attribute{
+							"cpu_kind": schema.StringAttribute{
 								MarkdownDescription: "cpu type",
 								Required:            true,
-								Type:                types.StringType,
-								PlanModifiers:       []tfsdk.AttributePlanModifier{modifiers.Default(types.StringValue(string(CpuKindShared)))},
 							},
-							"cpus": {
+							"cpus": schema.Int64Attribute{
 								MarkdownDescription: "cpu count",
 								Required:            true,
-								Type:                types.Int64Type,
-								PlanModifiers: []tfsdk.AttributePlanModifier{
-									modifiers.Default(types.Int64Value(1)),
-								},
-								Validators: []tfsdk.AttributeValidator{int64validator.AtLeast(1)},
+								Validators:          []validator.Int64{int64validator.AtLeast(1)},
 							},
-							"memory_mb": {
+							"memory_mb": schema.Int64Attribute{
 								MarkdownDescription: "memory mb",
 								Required:            true,
-								Type:                types.Int64Type,
-								PlanModifiers:       []tfsdk.AttributePlanModifier{modifiers.Default(types.Int64Value(256))},
 							},
-							"kernel_args": {
-								Optional:      true,
-								Type:          types.ListType{ElemType: types.StringType},
-								PlanModifiers: []tfsdk.AttributePlanModifier{modifiers.Default(types.ListNull(types.StringType))},
+							"kernel_args": schema.ListAttribute{
+								ElementType: types.StringType,
+								Optional:    true,
+								Computed:    true,
+								Default:     listdefault.StaticValue(types.ListNull(types.StringType)),
 							},
-						}),
-						PlanModifiers: []tfsdk.AttributePlanModifier{resource.UseStateForUnknown()},
+						},
+						PlanModifiers: []planmodifier.Object{objectplanmodifier.UseStateForUnknown()},
 					},
-					"env": {
+					"env": schema.MapAttribute{
 						MarkdownDescription: "Optional environment variables, keys and values must be strings",
 						Optional:            true,
 						Computed:            true,
-						Type:                types.MapType{ElemType: types.StringType},
-						PlanModifiers: []tfsdk.AttributePlanModifier{
-							modifiers.Default(
-								types.MapValueMust(types.StringType, map[string]attr.Value{}),
-							),
-							resource.UseStateForUnknown(),
+						ElementType:         types.StringType,
+						Default: mapdefault.StaticValue(
+							types.MapValueMust(types.StringType, map[string]attr.Value{}),
+						),
+						PlanModifiers: []planmodifier.Map{
+							mapplanmodifier.UseStateForUnknown(),
 						},
 					},
-					"mounts": {
+					"mounts": schema.ListNestedAttribute{
 						MarkdownDescription: "Volume mounts",
 						Optional:            true,
-						Attributes: tfsdk.ListNestedAttributes(map[string]tfsdk.Attribute{
-							//"encrypted": {
-							//	Optional:      true,
-							//	Computed:      true,
-							//	Type:          types.BoolType,
-							//	PlanModifiers: []tfsdk.AttributePlanModifier{resource.UseStateForUnknown()},
-							//},
-							"path": {
-								Required:            true,
-								MarkdownDescription: "Path for volume to be mounted on vm",
-								Type:                types.StringType,
+						NestedObject: schema.NestedAttributeObject{
+							Attributes: map[string]schema.Attribute{
+								//"encrypted": {
+								//	Optional:      true,
+								//	Computed:      true,
+								//	Type:          types.BoolType,
+								//	PlanModifiers: []tfsdk.AttributePlanModifier{resource.UseStateForUnknown()},
+								//},
+								"path": schema.StringAttribute{
+									Required:            true,
+									MarkdownDescription: "Path for volume to be mounted on vm",
+								},
+								//"size_gb": {
+								//	Optional:      true,
+								//	Computed:      true,
+								//	Type:          types.Int64Type,
+								//	PlanModifiers: []tfsdk.AttributePlanModifier{resource.UseStateForUnknown()},
+								//},
+								"volume": schema.StringAttribute{
+									Required:            true,
+									MarkdownDescription: "Name or ID of volume",
+								},
 							},
-							//"size_gb": {
-							//	Optional:      true,
-							//	Computed:      true,
-							//	Type:          types.Int64Type,
-							//	PlanModifiers: []tfsdk.AttributePlanModifier{resource.UseStateForUnknown()},
-							//},
-							"volume": {
-								Required:            true,
-								MarkdownDescription: "Name or ID of volume",
-								Type:                types.StringType,
-							},
-						}),
+						},
 					},
-					"services": {
+					"services": schema.ListNestedAttribute{
 						MarkdownDescription: "services",
 						Optional:            true,
-						Attributes: tfsdk.ListNestedAttributes(map[string]tfsdk.Attribute{
-							"ports": {
-								MarkdownDescription: "External ports and handlers",
-								Required:            true,
-								Attributes: tfsdk.ListNestedAttributes(map[string]tfsdk.Attribute{
-									"port": {
-										MarkdownDescription: "External port",
-										Required:            true,
-										Type:                types.Int64Type,
+						NestedObject: schema.NestedAttributeObject{
+							Attributes: map[string]schema.Attribute{
+								"ports": schema.ListNestedAttribute{
+									MarkdownDescription: "External ports and handlers",
+									Required:            true,
+									NestedObject: schema.NestedAttributeObject{
+										Attributes: map[string]schema.Attribute{
+											"port": schema.Int64Attribute{
+												MarkdownDescription: "External port",
+												Required:            true,
+											},
+											"handlers": schema.ListAttribute{
+												MarkdownDescription: "How the edge should process requests",
+												Optional:            true,
+												Computed:            true,
+												ElementType:         types.StringType,
+											},
+											"force_https": schema.BoolAttribute{
+												Optional: true,
+												Computed: true,
+												Default:  booldefault.StaticBool(false),
+											},
+										},
 									},
-									"handlers": {
-										MarkdownDescription: "How the edge should process requests",
-										Optional:            true,
-										Computed:            true,
-										Type:                types.ListType{ElemType: types.StringType},
+								},
+								"protocol": schema.StringAttribute{
+									MarkdownDescription: "network protocol",
+									Required:            true,
+								},
+								"internal_port": schema.Int64Attribute{
+									MarkdownDescription: "Port application listens on internally",
+									Required:            true,
+								},
+								"concurrency": schema.SingleNestedAttribute{
+									Optional: true,
+									Attributes: map[string]schema.Attribute{
+										"type": schema.StringAttribute{
+											Description: "Specifies what metric to use to measure load for the application. Either \"connections\" or \"requests\"",
+											Required:    true,
+										},
+										"hard_limit": schema.Int64Attribute{
+											Required: true,
+										},
+										"soft_limit": schema.Int64Attribute{
+											Required: true,
+										},
 									},
-									"force_https": {
-										Type:          types.BoolType,
-										Optional:      true,
-										Computed:      true,
-										PlanModifiers: []tfsdk.AttributePlanModifier{modifiers.Default(types.BoolValue(false))},
-									},
-								}),
+								},
 							},
-							"protocol": {
-								MarkdownDescription: "network protocol",
-								Required:            true,
-								Type:                types.StringType,
-							},
-							"internal_port": {
-								MarkdownDescription: "Port application listens on internally",
-								Required:            true,
-								Type:                types.Int64Type,
-							},
-							"concurrency": {
-								Optional: true,
-								Attributes: tfsdk.SingleNestedAttributes(map[string]tfsdk.Attribute{
-									"type": {
-										Type:        types.StringType,
-										Description: "Specifies what metric to use to measure load for the application. Either \"connections\" or \"requests\"",
-										Required:    true,
-									},
-									"hard_limit": {
-										Type:     types.Int64Type,
-										Required: true,
-									},
-									"soft_limit": {
-										Type:     types.Int64Type,
-										Required: true,
-									},
-								}),
-							},
-						}),
+						},
 					},
-					"processes": {
+					"processes": schema.ListNestedAttribute{
 						Optional: true,
-						Attributes: tfsdk.ListNestedAttributes(map[string]tfsdk.Attribute{
-							"exec": {
-								Optional: true,
-								Type:     types.ListType{ElemType: types.StringType},
+						NestedObject: schema.NestedAttributeObject{
+							Attributes: map[string]schema.Attribute{
+								"exec": schema.ListAttribute{
+									Optional:    true,
+									ElementType: types.StringType,
+								},
+								"entrypoint": schema.ListAttribute{
+									Optional:    true,
+									ElementType: types.StringType,
+								},
+								"cmd": schema.ListAttribute{
+									Optional:    true,
+									ElementType: types.StringType,
+								},
+								"user": schema.StringAttribute{
+									Optional: true,
+								},
+								"env": schema.MapAttribute{
+									Optional:    true,
+									ElementType: types.StringType,
+								},
 							},
-							"entrypoint": {
-								Optional: true,
-								Type:     types.ListType{ElemType: types.StringType},
-							},
-							"cmd": {
-								Optional: true,
-								Type:     types.ListType{ElemType: types.StringType},
-							},
-							"user": {
-								Optional: true,
-								Type:     types.StringType,
-							},
-							"env": {
-								Optional: true,
-								Type:     types.MapType{ElemType: types.StringType},
-							},
-						}),
+						},
 					},
-					"restart": {
+					"restart": schema.SingleNestedAttribute{
 						Optional: true,
 						Computed: true,
-						PlanModifiers: []tfsdk.AttributePlanModifier{modifiers.Default(types.ObjectNull(
+						Default: objectdefault.StaticValue(types.ObjectNull(
 							map[string]attr.Type{
 								"policy":      types.StringType,
 								"max_retries": types.Int64Type,
 							},
-						))},
-						Attributes: tfsdk.SingleNestedAttributes(map[string]tfsdk.Attribute{
-							"policy": {
+						)),
+						Attributes: map[string]schema.Attribute{
+							"policy": schema.StringAttribute{
 								Required:            true,
-								Type:                types.StringType,
 								Description:         "Restart policy, one of \"no\", \"on-failure\" and \"always\"",
 								MarkdownDescription: "Restart policy, one of `\"no\"`, `\"on-failure\"` and `\"always\"`",
 							},
-							"max_retries": {
+							"max_retries": schema.Int64Attribute{
 								Optional:            true,
-								Type:                types.Int64Type,
 								Description:         "Only relevant with the \"on-failure\" policy",
 								MarkdownDescription: "Only relevant with the `\"on-failure\"` policy",
 							},
-						}),
+						},
 					},
-					"metrics": {
+					"metrics": schema.SingleNestedAttribute{
 						Optional: true,
-						Attributes: tfsdk.SingleNestedAttributes(map[string]tfsdk.Attribute{
-							"port": {
-								Type:     types.Int64Type,
+						Attributes: map[string]schema.Attribute{
+							"port": schema.Int64Attribute{
 								Required: true,
 							},
-							"path": {
-								Type:     types.StringType,
+							"path": schema.StringAttribute{
 								Required: true,
 							},
-						}),
+						},
 					},
-					"schedule": {
+					"schedule": schema.StringAttribute{
 						Optional:            true,
-						Type:                types.StringType,
 						Description:         "Schedule this machine. Options are \"hourly\", \"daily\", \"weekly\" and \"monthly\".",
 						MarkdownDescription: "Schedule this machine. Options are `\"hourly\"`, `\"daily\"`, `\"weekly\"` and `\"monthly\"`.",
 					},
-					"checks": {
+					"checks": schema.MapNestedAttribute{
 						Optional: true,
-						Attributes: tfsdk.MapNestedAttributes(map[string]tfsdk.Attribute{
-							"type": {
-								Type:     types.StringType,
-								Required: true,
+						NestedObject: schema.NestedAttributeObject{
+							Attributes: map[string]schema.Attribute{
+								"type": schema.StringAttribute{
+									Required: true,
+								},
+								"port": schema.Int64Attribute{
+									Optional: true,
+								},
+								"interval": schema.StringAttribute{
+									CustomType: timetypes.GoDurationType{},
+									Optional:   true,
+								},
+								"timeout": schema.StringAttribute{
+									CustomType: timetypes.GoDurationType{},
+									Optional:   true,
+								},
+								"http_method": schema.StringAttribute{
+									Optional: true,
+								},
+								"http_path": schema.StringAttribute{
+									Optional: true,
+								},
 							},
-							"port": {
-								Type:     types.Int64Type,
-								Optional: true,
-							},
-							"interval": {
-								Type:     DurationType{},
-								Optional: true,
-							},
-							"timeout": {
-								Type:     DurationType{},
-								Optional: true,
-							},
-							"http_method": {
-								Type:     types.StringType,
-								Optional: true,
-							},
-							"http_path": {
-								Type:     types.StringType,
-								Optional: true,
-							},
-						}),
+						},
 					},
-					"metadata": {
-						Optional: true,
-						Computed: true,
-						Type:     types.MapType{ElemType: types.StringType},
-						PlanModifiers: []tfsdk.AttributePlanModifier{modifiers.Default(
-							types.MapValueMust(types.StringType, map[string]attr.Value{}),
-						)},
+					"metadata": schema.MapAttribute{
+						Optional:    true,
+						Computed:    true,
+						ElementType: types.StringType,
+						Default:     mapdefault.StaticValue(types.MapValueMust(types.StringType, map[string]attr.Value{})),
 					},
-				}),
+				},
 			},
-			"wait": {
-				Optional:      true,
-				Computed:      true,
-				Type:          types.BoolType,
-				Description:   "Wait for machine to start up",
-				PlanModifiers: []tfsdk.AttributePlanModifier{modifiers.Default(types.BoolValue(true))},
+			"wait": schema.BoolAttribute{
+				Optional:    true,
+				Computed:    true,
+				Description: "Wait for machine to start up",
+				Default:     booldefault.StaticBool(true),
 			},
-			"wait_for_checks": {
-				Optional:      true,
-				Computed:      true,
-				Type:          types.BoolType,
-				Description:   "Wait for machine's health checks to pass",
-				PlanModifiers: []tfsdk.AttributePlanModifier{modifiers.Default(types.BoolValue(false))},
+			"wait_for_checks": schema.BoolAttribute{
+				Optional:    true,
+				Computed:    true,
+				Description: "Wait for machine's health checks to pass",
+				Default:     booldefault.StaticBool(false),
 			},
 		},
-	}, nil
+	}
 }
 
 func TfServicesToServices(input []TfService) []fly.MachineService {

@@ -5,10 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/fly-apps/terraform-provider-fly/graphql"
-	"github.com/fly-apps/terraform-provider-fly/internal/provider/modifiers"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/vektah/gqlparser/v2/gqlerror"
@@ -29,40 +27,32 @@ func (i ipDataSource) Metadata(_ context.Context, _ datasource.MetadataRequest, 
 	resp.TypeName = "fly_ip"
 }
 
-func (i ipDataSource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
-	return tfsdk.Schema{
+func (i ipDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+	resp.Schema = schema.Schema{
 		MarkdownDescription: "Fly ip data source",
-		Attributes: map[string]tfsdk.Attribute{
-			"address": {
+		Attributes: map[string]schema.Attribute{
+			"address": schema.StringAttribute{
 				MarkdownDescription: "ID of volume",
-				Type:                types.StringType,
 				Computed:            true,
 			},
-			"app": {
+			"app": schema.StringAttribute{
 				MarkdownDescription: "Name of app to attach",
 				Required:            true,
-				Type:                types.StringType,
 			},
-			"id": {
+			"id": schema.StringAttribute{
 				MarkdownDescription: "ID of address",
 				Required:            true,
-				Type:                types.StringType,
 			},
-			"type": {
+			"type": schema.StringAttribute{
 				MarkdownDescription: "v4 or v6",
-				Type:                types.StringType,
 				Computed:            true,
 			},
-			"region": {
+			"region": schema.StringAttribute{
 				MarkdownDescription: "region",
-				Type:                types.StringType,
 				Computed:            true,
-				PlanModifiers: tfsdk.AttributePlanModifiers{
-					modifiers.Default(types.StringValue("global")),
-				},
 			},
 		},
-	}, nil
+	}
 }
 
 func newIpDataSource() datasource.DataSource {

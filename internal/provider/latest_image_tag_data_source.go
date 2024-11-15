@@ -3,8 +3,7 @@ package provider
 import (
 	"context"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -26,23 +25,20 @@ func (l latestImageTagDataSource) Metadata(_ context.Context, _ datasource.Metad
 	response.TypeName = "fly_latest_image_tag"
 }
 
-func (l latestImageTagDataSource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
-	return tfsdk.Schema{
-		Attributes: map[string]tfsdk.Attribute{
-			"repository": {
+func (l latestImageTagDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		Attributes: map[string]schema.Attribute{
+			"repository": schema.StringAttribute{
 				Required: true,
-				Type:     types.StringType,
 			},
-			"snapshot_id": {
+			"snapshot_id": schema.StringAttribute{
 				Optional: true,
-				Type:     types.StringType,
 			},
-			"image_ref": {
+			"image_ref": schema.StringAttribute{
 				Computed: true,
-				Type:     types.StringType,
 			},
 		},
-	}, nil
+	}
 }
 
 func (l latestImageTagDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {

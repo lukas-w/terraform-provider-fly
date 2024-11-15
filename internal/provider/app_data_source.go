@@ -4,8 +4,7 @@ import (
 	"context"
 	"github.com/fly-apps/terraform-provider-fly/graphql"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -29,50 +28,43 @@ func (d appDataSource) Metadata(_ context.Context, _ datasource.MetadataRequest,
 	resp.TypeName = "fly_app"
 }
 
-func (appDataSource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
-	return tfsdk.Schema{
+func (appDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+	resp.Schema = schema.Schema{
 		MarkdownDescription: "Retrieve info about graphql app",
 
-		Attributes: map[string]tfsdk.Attribute{
-			"name": {
+		Attributes: map[string]schema.Attribute{
+			"name": schema.StringAttribute{
 				MarkdownDescription: "Name of app",
-				Type:                types.StringType,
 				Required:            true,
 			},
-			"appurl": {
-				Type:     types.StringType,
+			"appurl": schema.StringAttribute{
 				Computed: true,
 			},
-			"hostname": {
-				Type:     types.StringType,
+			"hostname": schema.StringAttribute{
 				Computed: true,
 			},
-			"id": {
-				Type:     types.StringType,
+			"id": schema.StringAttribute{
 				Computed: true,
 			},
-			"status": {
-				Type:     types.StringType,
+			"status": schema.StringAttribute{
 				Computed: true,
 			},
-			"deployed": {
-				Type:     types.BoolType,
+			"deployed": schema.BoolAttribute{
 				Computed: true,
 			},
-			"healthchecks": {
-				Computed: true,
-				Type:     types.ListType{ElemType: types.StringType},
+			"healthchecks": schema.ListAttribute{
+				Computed:    true,
+				ElementType: types.StringType,
 			},
-			"ipaddresses": {
-				Computed: true,
-				Type:     types.ListType{ElemType: types.StringType},
+			"ipaddresses": schema.ListAttribute{
+				Computed:    true,
+				ElementType: types.StringType,
 			},
-			"currentrelease": {
-				Type:     types.StringType,
+			"currentrelease": schema.StringAttribute{
 				Computed: true,
 			},
 		},
-	}, nil
+	}
 }
 
 func newAppDataSource() datasource.DataSource {
