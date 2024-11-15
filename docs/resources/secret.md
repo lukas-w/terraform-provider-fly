@@ -25,5 +25,3 @@ description: |-
 
 - `created_at` (String)
 - `digest` (String)
-
-

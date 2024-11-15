@@ -38,5 +38,3 @@ resource "fly_volume" "exampleApp" {
 ### Read-Only
 
 - `id` (String) ID of volume
-
-

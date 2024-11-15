@@ -27,13 +27,15 @@ resource "fly_app" "exampleApp" {
 
 ### Optional
 
-- `machines` (Boolean) Use the machines platform
+- `enable_consul` (Boolean)
 - `org` (String) Optional org slug to operate upon
+- `role_id` (String)
 - `secrets` (Attributes Map) Secret environment variables. Keys are case sensitive and are used as environment variable names. Does not override existing secrets added outside of Terraform. (see [below for nested schema](#nestedatt--secrets))
 
 ### Read-Only
 
 - `appurl` (String) readonly appUrl
+- `consul_url` (String, Sensitive)
 - `id` (String) readonly app id
 - `orgid` (String) readonly orgid
 
@@ -48,5 +50,3 @@ Read-Only:
 
 - `created_at` (String)
 - `digest` (String)
-
-

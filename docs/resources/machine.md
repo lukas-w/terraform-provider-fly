@@ -59,33 +59,44 @@ resource "fly_machine" "exampleMachine" {
 
 ### Required
 
-- `image` (String) docker image
+- `app` (String) fly app
+- `config` (Attributes) (see [below for nested schema](#nestedatt--config))
 - `region` (String) machine region
 
 ### Optional
 
-- `app` (String) fly app
-- `checks` (Attributes Map) (see [below for nested schema](#nestedatt--checks))
-- `cmd` (List of String) cmd
-- `entrypoint` (List of String) image entrypoint
-- `env` (Map of String) Optional environment variables, keys and values must be strings
-- `exec` (List of String) exec command
-- `guest` (Attributes) (see [below for nested schema](#nestedatt--guest))
-- `metadata` (Map of String)
-- `metrics` (Attributes) (see [below for nested schema](#nestedatt--metrics))
-- `mounts` (Attributes List) Volume mounts (see [below for nested schema](#nestedatt--mounts))
 - `name` (String) machine name
-- `processes` (Attributes List) (see [below for nested schema](#nestedatt--processes))
-- `restart` (Attributes) (see [below for nested schema](#nestedatt--restart))
-- `services` (Attributes List) services (see [below for nested schema](#nestedatt--services))
+- `wait` (Boolean) Wait for machine to start up
+- `wait_for_checks` (Boolean) Wait for machine's health checks to pass
 
 ### Read-Only
 
 - `id` (String) machine id
 - `private_ip` (String) Private IP
 
-<a id="nestedatt--checks"></a>
-### Nested Schema for `checks`
+<a id="nestedatt--config"></a>
+### Nested Schema for `config`
+
+Required:
+
+- `image` (String) docker image
+
+Optional:
+
+- `checks` (Attributes Map) (see [below for nested schema](#nestedatt--config--checks))
+- `env` (Map of String) Optional environment variables, keys and values must be strings
+- `guest` (Attributes) (see [below for nested schema](#nestedatt--config--guest))
+- `init` (Attributes) (see [below for nested schema](#nestedatt--config--init))
+- `metadata` (Map of String)
+- `metrics` (Attributes) (see [below for nested schema](#nestedatt--config--metrics))
+- `mounts` (Attributes List) Volume mounts (see [below for nested schema](#nestedatt--config--mounts))
+- `processes` (Attributes List) (see [below for nested schema](#nestedatt--config--processes))
+- `restart` (Attributes) (see [below for nested schema](#nestedatt--config--restart))
+- `schedule` (String) Schedule this machine. Options are `"hourly"`, `"daily"`, `"weekly"` and `"monthly"`.
+- `services` (Attributes List) services (see [below for nested schema](#nestedatt--config--services))
+
+<a id="nestedatt--config--checks"></a>
+### Nested Schema for `config.checks`
 
 Required:
 
@@ -100,8 +111,8 @@ Optional:
 - `timeout` (String)
 
 
-<a id="nestedatt--guest"></a>
-### Nested Schema for `guest`
+<a id="nestedatt--config--guest"></a>
+### Nested Schema for `config.guest`
 
 Required:
 
@@ -114,8 +125,18 @@ Optional:
 - `kernel_args` (List of String)
 
 
-<a id="nestedatt--metrics"></a>
-### Nested Schema for `metrics`
+<a id="nestedatt--config--init"></a>
+### Nested Schema for `config.init`
+
+Optional:
+
+- `cmd` (List of String) cmd
+- `entrypoint` (List of String) image entrypoint
+- `exec` (List of String) exec command
+
+
+<a id="nestedatt--config--metrics"></a>
+### Nested Schema for `config.metrics`
 
 Required:
 
@@ -123,22 +144,17 @@ Required:
 - `port` (Number)
 
 
-<a id="nestedatt--mounts"></a>
-### Nested Schema for `mounts`
+<a id="nestedatt--config--mounts"></a>
+### Nested Schema for `config.mounts`
 
 Required:
 
 - `path` (String) Path for volume to be mounted on vm
 - `volume` (String) Name or ID of volume
 
-Optional:
 
-- `encrypted` (Boolean)
-- `size_gb` (Number)
-
-
-<a id="nestedatt--processes"></a>
-### Nested Schema for `processes`
+<a id="nestedatt--config--processes"></a>
+### Nested Schema for `config.processes`
 
 Optional:
 
@@ -149,8 +165,8 @@ Optional:
 - `user` (String)
 
 
-<a id="nestedatt--restart"></a>
-### Nested Schema for `restart`
+<a id="nestedatt--config--restart"></a>
+### Nested Schema for `config.restart`
 
 Required:
 
@@ -161,21 +177,21 @@ Optional:
 - `max_retries` (Number) Only relevant with the `"on-failure"` policy
 
 
-<a id="nestedatt--services"></a>
-### Nested Schema for `services`
+<a id="nestedatt--config--services"></a>
+### Nested Schema for `config.services`
 
 Required:
 
 - `internal_port` (Number) Port application listens on internally
-- `ports` (Attributes List) External ports and handlers (see [below for nested schema](#nestedatt--services--ports))
+- `ports` (Attributes List) External ports and handlers (see [below for nested schema](#nestedatt--config--services--ports))
 - `protocol` (String) network protocol
 
 Optional:
 
-- `concurrency` (Attributes) (see [below for nested schema](#nestedatt--services--concurrency))
+- `concurrency` (Attributes) (see [below for nested schema](#nestedatt--config--services--concurrency))
 
-<a id="nestedatt--services--ports"></a>
-### Nested Schema for `services.ports`
+<a id="nestedatt--config--services--ports"></a>
+### Nested Schema for `config.services.ports`
 
 Required:
 
@@ -187,13 +203,11 @@ Optional:
 - `handlers` (List of String) How the edge should process requests
 
 
-<a id="nestedatt--services--concurrency"></a>
-### Nested Schema for `services.concurrency`
+<a id="nestedatt--config--services--concurrency"></a>
+### Nested Schema for `config.services.concurrency`
 
 Required:
 
 - `hard_limit` (Number)
 - `soft_limit` (Number)
 - `type` (String) Specifies what metric to use to measure load for the application. Either "connections" or "requests"
-
-

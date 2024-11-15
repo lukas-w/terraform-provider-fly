@@ -36,5 +36,3 @@ Read-Only:
 - `joined_at` (String)
 - `name` (String)
 - `role` (String) Member role, either `"ADMIN"` or `"MEMBER"`
-
-

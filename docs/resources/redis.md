@@ -32,5 +32,3 @@ description: |-
 - `password` (String, Sensitive)
 - `private_ip` (String)
 - `public_url` (String, Sensitive)
-
-

@@ -18,12 +18,10 @@ Fly ip data source
 ### Required
 
 - `app` (String) Name of app to attach
-- `type` (String) v4 or v6
+- `id` (String) ID of address
 
 ### Read-Only
 
 - `address` (String) ID of volume
-- `id` (String) ID of address
 - `region` (String) region
-
-
+- `type` (String) v4 or v6

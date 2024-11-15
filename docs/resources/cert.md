@@ -30,9 +30,7 @@ resource "fly_cert" "exampleCert" {
 ### Read-Only
 
 - `check` (Boolean) check
-- `dnsvalidationhostname` (String) DnsValidationHostname
-- `dnsvalidationinstructions` (String) DnsValidationHostname
-- `dnsvalidationtarget` (String) DnsValidationTarget
+- `dns_validation_hostname` (String) DnsValidationHostname
+- `dns_validation_instructions` (String) DnsValidationHostname
+- `dns_validation_target` (String) DnsValidationTarget
 - `id` (String) ID of address
-
-
