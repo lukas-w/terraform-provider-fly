@@ -189,6 +189,7 @@ func (p *provider) DataSources(ctx context.Context) []func() datasource.DataSour
 		newIpDataSource,
 		newOrganizationDataSource,
 		newLatestImageTagDataSource,
+		NewVolumeDataSource,
 	}
 }
 
