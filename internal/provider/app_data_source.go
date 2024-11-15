@@ -87,6 +87,10 @@ func (d appDataSource) Read(ctx context.Context, req datasource.ReadRequest, res
 	if err != nil {
 		resp.Diagnostics.AddError("Query failed", err.Error())
 	}
+	if queryresp == nil {
+		resp.Diagnostics.AddError("Query returned nil", "graphql.GetFullApp returned nil despite no error being reported")
+		return
+	}
 
 	a := appDataSourceOutput{
 		Name:           types.StringValue(appName),

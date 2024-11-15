@@ -486,12 +486,12 @@ func (mr flyMachineResource) Read(ctx context.Context, req resource.ReadRequest,
 	var data flyMachineResourceData
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 
-	flaps := mr.getFlapsClient(ctx, data.App.ValueString(), &resp.Diagnostics)
+	client := mr.getFlapsClient(ctx, data.App.ValueString(), &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	machine, err := flaps.Get(ctx, data.Id.ValueString())
+	machine, err := client.Get(ctx, data.Id.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to get machine", err.Error())
 		return
