@@ -177,7 +177,6 @@ func (p *provider) Resources(ctx context.Context) []func() resource.Resource {
 		newFlyMachineResource,
 		newOrganizationResource,
 		newRedisResource,
-		newPostgresConsulResource,
 		newFlyWireguardTokenResource,
 	}
 }
@@ -188,7 +187,6 @@ func (p *provider) DataSources(ctx context.Context) []func() datasource.DataSour
 		newCertDataSource,
 		newIpDataSource,
 		newOrganizationDataSource,
-		newLatestImageTagDataSource,
 		NewVolumeDataSource,
 	}
 }
