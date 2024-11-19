@@ -3,6 +3,8 @@ package provider
 import (
 	"context"
 	"fmt"
+	"strings"
+
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -13,7 +15,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/superfly/fly-go"
-	"strings"
 )
 
 var _ resource.ResourceWithConfigure = &flyVolumeResource{}
@@ -50,19 +51,18 @@ func (vr flyVolumeResource) Metadata(_ context.Context, _ resource.MetadataReque
 
 func (vr flyVolumeResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Fly volume resource",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
-				MarkdownDescription: "ID of volume",
+				MarkdownDescription: ID_DESC,
 				Computed:            true,
 			},
 			"app": schema.StringAttribute{
-				MarkdownDescription: "Name of app to attach",
+				MarkdownDescription: APP_DESC,
 				Required:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			"size": schema.Int64Attribute{
-				MarkdownDescription: "Size of volume in gb",
+				MarkdownDescription: "Size of volume in GB",
 				Required:            true,
 				PlanModifiers: []planmodifier.Int64{
 					int64planmodifier.RequiresReplaceIf(func(ctx context.Context, req planmodifier.Int64Request, resp *int64planmodifier.RequiresReplaceIfFuncResponse) {
@@ -74,12 +74,12 @@ func (vr flyVolumeResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 				},
 			},
 			"name": schema.StringAttribute{
-				MarkdownDescription: "name",
+				MarkdownDescription: NAME_DESC,
 				Required:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			"region": schema.StringAttribute{
-				MarkdownDescription: "region",
+				MarkdownDescription: REGION_DESC,
 				Required:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
@@ -197,5 +197,16 @@ func (vr flyVolumeResource) Delete(ctx context.Context, req resource.DeleteReque
 }
 
 func (vr flyVolumeResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+	idParts := strings.Split(req.ID, ",")
+
+	if len(idParts) != 2 || idParts[0] == "" || idParts[1] == "" {
+		resp.Diagnostics.AddError(
+			"Unexpected Import Identifier",
+			fmt.Sprintf("Expected import identifier with format: app_id,volume_id. Got: %q", req.ID),
+		)
+		return
+	}
+
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("app"), idParts[0])...)
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), idParts[1])...)
 }

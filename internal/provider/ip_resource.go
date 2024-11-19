@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
+
 	"github.com/fly-apps/terraform-provider-fly/graphql"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -15,7 +17,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/vektah/gqlparser/v2/gqlerror"
-	"strings"
 )
 
 // Note that there are inconsistencies in GraphQL API's behaviour regarding the ip address type:
@@ -69,16 +70,15 @@ func (flyIpResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *r
 		MarkdownDescription: "Fly ip resource",
 		Attributes: map[string]schema.Attribute{
 			"address": schema.StringAttribute{
-				MarkdownDescription: "IP address",
-				Computed:            true,
+				Computed: true,
 			},
 			"app": schema.StringAttribute{
-				MarkdownDescription: "Name of app to attach to",
+				MarkdownDescription: APP_DESC,
 				Required:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			"id": schema.StringAttribute{
-				MarkdownDescription: "ID of address",
+				MarkdownDescription: ID_DESC,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
@@ -93,7 +93,7 @@ func (flyIpResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *r
 				Default:  booldefault.StaticBool(false),
 			},
 			"region": schema.StringAttribute{
-				MarkdownDescription: "region",
+				MarkdownDescription: REGION_DESC,
 				Computed:            true,
 				Default:             stringdefault.StaticString("global"),
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
@@ -192,7 +192,18 @@ func (ir flyIpResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 }
 
 func (ir flyIpResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+	idParts := strings.Split(req.ID, ",")
+
+	if len(idParts) != 2 || idParts[0] == "" || idParts[1] == "" {
+		resp.Diagnostics.AddError(
+			"Unexpected Import Identifier",
+			fmt.Sprintf("Expected import identifier with format: app_id,ip_address. Got: %q", req.ID),
+		)
+		return
+	}
+
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("app"), idParts[0])...)
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("address"), idParts[1])...)
 }
 
 func isPrivate(address string) bool {

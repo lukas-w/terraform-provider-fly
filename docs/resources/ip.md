@@ -41,3 +41,11 @@ resource "fly_ip" "exampleIpv6" {
 - `address` (String) IP address
 - `id` (String) ID of address
 - `region` (String) region
+
+## Import
+
+Import is supported using the following syntax:
+
+```shell
+terraform import fly_ip.exampleIp <app_id>,<ip_address>
+```

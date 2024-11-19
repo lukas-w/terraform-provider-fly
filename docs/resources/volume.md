@@ -26,10 +26,10 @@ resource "fly_volume" "exampleApp" {
 
 ### Required
 
-- `app` (String) Name of app to attach
+- `app` (String) Name of app to attach to
 - `name` (String) name
 - `region` (String) region
-- `size` (Number) Size of volume in gb
+- `size` (Number) Size of volume in GB
 
 ### Optional
 
@@ -38,3 +38,11 @@ resource "fly_volume" "exampleApp" {
 ### Read-Only
 
 - `id` (String) ID of volume
+
+## Import
+
+Import is supported using the following syntax:
+
+```shell
+terraform import fly_volume.exampleApp <app_id>,<volume_internal_id>
+```
