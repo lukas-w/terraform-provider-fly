@@ -1,6 +1,6 @@
 default: build generate
 
-build:
+build: generate
 	go build -v ./...
 
 generate:

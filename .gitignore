@@ -42,3 +42,5 @@ examples/local/
 tmp/
 
 graphql/generated.go
+
+docs
