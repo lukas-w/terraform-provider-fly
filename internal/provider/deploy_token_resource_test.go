@@ -16,12 +16,11 @@ func TestAccDeployTokenResource_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(`
-%s
 resource "fly_deploy_token" "test" {
 	name = "%s"
 	app = "%s"
 }
-`, providerConfig(), tokenName, appName),
+`, tokenName, appName),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("fly_deploy_token.test", "name", tokenName),
 					resource.TestCheckResourceAttrSet("fly_deploy_token.test", "id"),

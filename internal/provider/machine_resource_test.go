@@ -17,39 +17,37 @@ func TestAccFlyMachineBase(t *testing.T) {
 			{
 				Config: testFlyMachineResourceConfig(rName),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("fly_machine.test", "name", rName),
-					resource.TestCheckResourceAttr("fly_machine.test", "app", test.GetTestAppName()),
-					resource.TestCheckResourceAttr("fly_machine.test", "region", test.GetTestRegion()),
-					resource.TestCheckResourceAttr("fly_machine.test", "config.image", "nginx"),
+					resource.TestCheckResourceAttr("fly_machine.testMachine", "name", rName),
+					resource.TestCheckResourceAttr("fly_machine.testMachine", "app", test.GetTestAppName()),
+					resource.TestCheckResourceAttr("fly_machine.testMachine", "region", test.GetTestRegion()),
+					resource.TestCheckResourceAttr("fly_machine.testMachine", "config.image", "nginx"),
 					resource.ComposeTestCheckFunc(
-						resource.TestCheckResourceAttrSet("fly_machine.test", "config.guest.cpus"),
-						resource.TestCheckResourceAttrSet("fly_machine.test", "config.guest.cpu_kind"),
-						resource.TestCheckResourceAttrSet("fly_machine.test", "config.guest.memory_mb"),
+						resource.TestCheckResourceAttrSet("fly_machine.testMachine", "config.guest.cpus"),
+						resource.TestCheckResourceAttrSet("fly_machine.testMachine", "config.guest.cpu_kind"),
+						resource.TestCheckResourceAttrSet("fly_machine.testMachine", "config.guest.memory_mb"),
 					),
 					resource.ComposeAggregateTestCheckFunc(
-						resource.TestCheckResourceAttr("fly_machine.test", "config.services.0.protocol", "tcp"),
-						resource.TestCheckResourceAttr("fly_machine.test", "config.services.0.internal_port", "80"),
+						resource.TestCheckResourceAttr("fly_machine.testMachine", "config.services.0.protocol", "tcp"),
+						resource.TestCheckResourceAttr("fly_machine.testMachine", "config.services.0.internal_port", "80"),
 					),
-					resource.TestCheckResourceAttrSet("fly_machine.test", "private_ip"),
-					resource.TestCheckNoResourceAttr("fly_machine.test", "config.restart"),
-					resource.TestCheckNoResourceAttr("fly_machine.test", "config.processes"),
-					resource.TestCheckNoResourceAttr("fly_machine.test", "config.metrics"),
-					resource.TestCheckNoResourceAttr("fly_machine.test", "config.checks"),
+					resource.TestCheckResourceAttrSet("fly_machine.testMachine", "private_ip"),
+					resource.TestCheckNoResourceAttr("fly_machine.testMachine", "config.restart"),
+					resource.TestCheckNoResourceAttr("fly_machine.testMachine", "config.processes"),
+					resource.TestCheckNoResourceAttr("fly_machine.testMachine", "config.metrics"),
+					resource.TestCheckNoResourceAttr("fly_machine.testMachine", "config.checks"),
 				),
 			},
 			{
 				Config: testFlyMachineResourceUpdateConfig(rName),
-				Check:  resource.TestCheckResourceAttr("fly_machine.test", "config.env.updatedkey", "updatedValue"),
+				Check:  resource.TestCheckResourceAttr("fly_machine.testMachine", "config.env.updatedkey", "updatedValue"),
 			},
 		},
 	})
 }
 
-func testFlyMachineResourceConfig(name string) string {
+func testFlyMachineResourceConfig(machineName string) string {
 	return fmt.Sprintf(`
-%s
-
-resource "fly_machine" "test" {
+resource "fly_machine" "testMachine" {
 	app = "%s"
 	region = "%s"
 	name = "%s"
@@ -76,14 +74,12 @@ resource "fly_machine" "test" {
 		]
 	}
 }
-`, providerConfig(), test.GetTestAppName(), test.GetTestRegion(), name)
+`, test.GetTestAppName(), test.GetTestRegion(), machineName)
 }
 
-func testFlyMachineResourceUpdateConfig(name string) string {
+func testFlyMachineResourceUpdateConfig(machinename string) string {
 	return fmt.Sprintf(`
-%s
-
-resource "fly_machine" "test" {
+resource "fly_machine" "testMachine" {
 	app = "%s"
 	region = "%s"
 	name = "%s"
@@ -110,7 +106,7 @@ resource "fly_machine" "test" {
 		]
 	}
 }
-`, providerConfig(), test.GetTestAppName(), test.GetTestRegion(), name)
+`, test.GetTestAppName(), test.GetTestRegion(), machinename)
 }
 
 func TestAccFlyMachineNoServices(t *testing.T) {
@@ -122,19 +118,17 @@ func TestAccFlyMachineNoServices(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testFlyMachineResourceNoServicesConfig(rName),
-				Check:  resource.TestCheckResourceAttr("fly_machine.test", "name", rName),
+				Check:  resource.TestCheckResourceAttr("fly_machine.testMachine", "name", rName),
 			},
 		},
 	})
 }
 
-func testFlyMachineResourceNoServicesConfig(name string) string {
+func testFlyMachineResourceNoServicesConfig(machineName string) string {
 	app := test.GetTestAppName()
 
 	return fmt.Sprintf(`
-%s
-
-resource "fly_machine" "test" {
+resource "fly_machine" "testMachine" {
 	app = "%s"
 	region = "%s"
 	name = "%s"
@@ -145,7 +139,7 @@ resource "fly_machine" "test" {
 		}
 	}
 }
-`, providerConfig(), app, test.GetTestRegion(), name)
+`, app, test.GetTestRegion(), machineName)
 }
 
 func TestAccFlyMachineEmptyServices(t *testing.T) {
@@ -157,17 +151,15 @@ func TestAccFlyMachineEmptyServices(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testFlyMachineResourceEmptyServicesConfig(rName),
-				Check:  resource.TestCheckResourceAttr("fly_machine.test", "name", rName),
+				Check:  resource.TestCheckResourceAttr("fly_machine.testMachine", "name", rName),
 			},
 		},
 	})
 }
 
-func testFlyMachineResourceEmptyServicesConfig(name string) string {
+func testFlyMachineResourceEmptyServicesConfig(machineName string) string {
 	return fmt.Sprintf(`
-%s
-
-resource "fly_machine" "test" {
+resource "fly_machine" "testMachine" {
 	app = "%s"
 	region = "%s"
 	name = "%s"
@@ -179,7 +171,7 @@ resource "fly_machine" "test" {
 		services = []
 	}
 }
-`, providerConfig(), test.GetTestAppName(), test.GetTestRegion(), name)
+`, test.GetTestAppName(), test.GetTestRegion(), machineName)
 }
 
 func TestAccFlyMachineInitOptions(t *testing.T) {
@@ -192,21 +184,19 @@ func TestAccFlyMachineInitOptions(t *testing.T) {
 			{
 				Config: testFlyMachineResourceInitOptionsConfig(rName),
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr("fly_machine.test", "name", rName),
-					resource.TestCheckResourceAttr("fly_machine.test", "config.init.cmd.0", "cmdText"),
-					resource.TestCheckResourceAttr("fly_machine.test", "config.init.entrypoint.0", "entrypointText"),
-					resource.TestCheckResourceAttr("fly_machine.test", "config.init.exec.0", "execText"),
+					resource.TestCheckResourceAttr("fly_machine.testMachine", "name", rName),
+					resource.TestCheckResourceAttr("fly_machine.testMachine", "config.init.cmd.0", "cmdText"),
+					resource.TestCheckResourceAttr("fly_machine.testMachine", "config.init.entrypoint.0", "entrypointText"),
+					resource.TestCheckResourceAttr("fly_machine.testMachine", "config.init.exec.0", "execText"),
 				),
 			},
 		},
 	})
 }
 
-func testFlyMachineResourceInitOptionsConfig(name string) string {
+func testFlyMachineResourceInitOptionsConfig(machineName string) string {
 	return fmt.Sprintf(`
-%s
-
-resource "fly_machine" "test" {
+resource "fly_machine" "testMachine" {
 	app = "%s"
 	region = "%s"
 	name = "%s"
@@ -222,7 +212,7 @@ resource "fly_machine" "test" {
 		}
 	}
 }
-`, providerConfig(), test.GetTestAppName(), test.GetTestRegion(), name)
+`, test.GetTestAppName(), test.GetTestRegion(), machineName)
 }
 
 func TestAccFlyMachineModifyImage(t *testing.T) {
@@ -242,11 +232,9 @@ func TestAccFlyMachineModifyImage(t *testing.T) {
 	})
 }
 
-func testFlyMachineResourceChangeImageConfig(name string) string {
+func testFlyMachineResourceChangeImageConfig(machineName string) string {
 	return fmt.Sprintf(`
-%s
-
-resource "fly_machine" "test" {
+resource "fly_machine" "testMachine" {
 	app = "%s"
 	region = "%s"
 	name = "%s"
@@ -273,7 +261,7 @@ resource "fly_machine" "test" {
 		]
 	}
 }
-`, providerConfig(), test.GetTestAppName(), test.GetTestRegion(), name)
+`, test.GetTestAppName(), test.GetTestRegion(), machineName)
 }
 
 func TestAccFlyMachineEmptyName(t *testing.T) {
@@ -294,9 +282,7 @@ func TestAccFlyMachineEmptyName(t *testing.T) {
 
 func testFlyMachineResourceEmptyNameConfig() string {
 	return fmt.Sprintf(`
-%s
-
-resource "fly_machine" "test" {
+resource "fly_machine" "testMachine" {
 	app = "%s"
 	region = "%s"
 	config = {
@@ -322,14 +308,12 @@ resource "fly_machine" "test" {
 		]
 	}
 }
-`, providerConfig(), test.GetTestAppName(), test.GetTestRegion())
+`, test.GetTestAppName(), test.GetTestRegion())
 }
 
 func testFlyMachineResourceEmptyNameUpdateConfig() string {
 	return fmt.Sprintf(`
-%s
-
-resource "fly_machine" "test" {
+resource "fly_machine" "testMachine" {
 	app = "%s"
 	region = "%s"
 	config = {
@@ -355,7 +339,7 @@ resource "fly_machine" "test" {
 		]
 	}
 }
-`, providerConfig(), test.GetTestAppName(), test.GetTestRegion())
+`, test.GetTestAppName(), test.GetTestRegion())
 }
 
 func TestAccFlyMachineGuest(t *testing.T) {
@@ -366,9 +350,7 @@ func TestAccFlyMachineGuest(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(`
-%s
-
-resource "fly_machine" "test" {
+resource "fly_machine" "testMachine" {
 	app = "%s"
 	region = "%s"
 	config = {
@@ -380,12 +362,12 @@ resource "fly_machine" "test" {
 		}
 	}
 }
-`, providerConfig(), test.GetTestAppName(), test.GetTestRegion()),
+`, test.GetTestAppName(), test.GetTestRegion()),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("fly_machine.test", "config.guest.memory_mb", "256"),
-					resource.TestCheckResourceAttr("fly_machine.test", "config.guest.cpus", "1"),
-					resource.TestCheckResourceAttr("fly_machine.test", "config.guest.cpu_kind", "shared"),
-					resource.TestCheckNoResourceAttr("fly_machine.test", "config.guest.kernel_args"),
+					resource.TestCheckResourceAttr("fly_machine.testMachine", "config.guest.memory_mb", "256"),
+					resource.TestCheckResourceAttr("fly_machine.testMachine", "config.guest.cpus", "1"),
+					resource.TestCheckResourceAttr("fly_machine.testMachine", "config.guest.cpu_kind", "shared"),
+					resource.TestCheckNoResourceAttr("fly_machine.testMachine", "config.guest.kernel_args"),
 				),
 			},
 		},
@@ -400,9 +382,7 @@ func TestAccFlyMachineChecks(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(`
-%s
-
-resource "fly_machine" "test" {
+resource "fly_machine" "testMachine" {
 	app = "%s"
 	region = "%s"
 	config = {
@@ -419,10 +399,10 @@ resource "fly_machine" "test" {
 		}
 	}
 }
-`, providerConfig(), test.GetTestAppName(), test.GetTestRegion()),
+`, test.GetTestAppName(), test.GetTestRegion()),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("fly_machine.test", "config.checks.pg.type", "http"),
-					resource.TestCheckResourceAttr("fly_machine.test", "config.checks.pg.port", "5500"),
+					resource.TestCheckResourceAttr("fly_machine.testMachine", "config.checks.pg.type", "http"),
+					resource.TestCheckResourceAttr("fly_machine.testMachine", "config.checks.pg.port", "5500"),
 				),
 			},
 		},

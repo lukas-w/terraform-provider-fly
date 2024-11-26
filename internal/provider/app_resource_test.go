@@ -19,12 +19,11 @@ func TestAccApp_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(`
-%s
 resource "fly_app" "test" {
 	name = "%s"
 	org = "%s"
 }
-`, providerConfig(), name, test.GetTestOrg()),
+`, name, test.GetTestOrg()),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("fly_app.test", "name", name),
 					resource.TestCheckResourceAttr("fly_app.test", "org", test.GetTestOrg()),
@@ -34,12 +33,11 @@ resource "fly_app" "test" {
 			},
 			{
 				Config: fmt.Sprintf(`
-%s
 resource "fly_app" "test" {
 	name = "%s"
 	org = "%s"
 }
-`, providerConfig(), name, test.GetTestOrg()),
+`, name, test.GetTestOrg()),
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PreApply: []plancheck.PlanCheck{
 						plancheck.ExpectResourceAction("fly_app.test", plancheck.ResourceActionNoop),
@@ -58,7 +56,6 @@ func TestAccApp_secrets_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(`
-%s
 resource "fly_app" "test" {
 	name = "%s"
 	org = "%s"
@@ -66,7 +63,7 @@ resource "fly_app" "test" {
 		TEST = {value = "123"}
 	}
 }
-`, providerConfig(), name, test.GetTestOrg()),
+`, name, test.GetTestOrg()),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("fly_app.test", "name", name),
 					resource.TestCheckResourceAttr("fly_app.test", "org", test.GetTestOrg()),
@@ -79,7 +76,6 @@ resource "fly_app" "test" {
 			},
 			{
 				Config: fmt.Sprintf(`
-%s
 resource "fly_app" "test" {
 	name = "%s"
 	org = "%s"
@@ -87,7 +83,7 @@ resource "fly_app" "test" {
 		TEST = {value = "321"}
 	}
 }
-`, providerConfig(), name, test.GetTestOrg()),
+`, name, test.GetTestOrg()),
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PreApply: []plancheck.PlanCheck{
 						plancheck.ExpectResourceAction("fly_app.test", plancheck.ResourceActionUpdate),
@@ -115,7 +111,6 @@ func TestAccApp_secrets_drift(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(`
-%s
 resource "fly_app" "test" {
 	name = "%s"
 	org = "%s"
@@ -123,7 +118,7 @@ resource "fly_app" "test" {
 		TEST = {value = "321"}
 	}
 }
-`, providerConfig(), name, test.GetTestOrg()),
+`, name, test.GetTestOrg()),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("fly_app.test", "secrets.TEST.value", "321"),
 					resource.TestCheckResourceAttrSet("fly_app.test", "secrets.TEST.digest"),
@@ -152,7 +147,6 @@ resource "fly_app" "test" {
 					digest1 = oldSecret.Digest
 				},
 				Config: fmt.Sprintf(`
-%s
 resource "fly_app" "test" {
 	name = "%s"
 	org = "%s"
@@ -160,7 +154,7 @@ resource "fly_app" "test" {
 		TEST = {value = "321"}
 	}
 }
-`, providerConfig(), name, test.GetTestOrg()),
+`, name, test.GetTestOrg()),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("fly_app.test", "secrets.TEST.value", "321"),
 					resource.TestCheckResourceAttrSet("fly_app.test", "secrets.TEST.digest"),
@@ -208,7 +202,6 @@ func TestAccApp_secrets_unmanaged(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(`
-%s
 resource "fly_app" "test" {
 	name = "%s"
 	org = "%s"
@@ -216,7 +209,7 @@ resource "fly_app" "test" {
 		TEST = {value = "123"}
 	}
 }
-`, providerConfig(), name, test.GetTestOrg()),
+`, name, test.GetTestOrg()),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("fly_app.test", "secrets.TEST.value", "123"),
 				),
@@ -231,7 +224,6 @@ resource "fly_app" "test" {
 					}
 				},
 				Config: fmt.Sprintf(`
-%s
 resource "fly_app" "test" {
 	name = "%s"
 	org = "%s"
@@ -239,7 +231,7 @@ resource "fly_app" "test" {
 		TEST = {value = "3"}
 	}
 }
-`, providerConfig(), name, test.GetTestOrg()),
+`, name, test.GetTestOrg()),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("fly_app.test", "secrets.TEST.digest"),
 					resource.TestCheckNoResourceAttr("fly_app.test", "secrets.UNMANAGED.digest"),
@@ -260,13 +252,12 @@ resource "fly_app" "test" {
 			},
 			{
 				Config: fmt.Sprintf(`
-%s
 resource "fly_app" "test" {
 	name = "%s"
 	org = "%s"
 	secrets = {}
 }
-`, providerConfig(), name, test.GetTestOrg()),
+`, name, test.GetTestOrg()),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckNoResourceAttr("fly_app.test", "secrets.TEST"),
 					resource.TestCheckNoResourceAttr("fly_app.test", "secrets.UNMANAGED.digest"),

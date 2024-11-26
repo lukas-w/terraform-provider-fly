@@ -15,13 +15,12 @@ func TestAccIp_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(`
-%s
 resource "fly_ip" "ip" {
 	app = "%s"
 	type = "v6"
 	private = true
 }
-`, providerConfig(), appName),
+`, appName),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("fly_ip.ip", "address"),
 					resource.TestCheckResourceAttr("fly_ip.ip", "type", "v6"),

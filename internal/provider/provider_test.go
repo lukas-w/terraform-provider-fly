@@ -21,13 +21,6 @@ func testAccPreCheck(t *testing.T) {
 	}
 }
 
-func providerConfig() string {
-	return `
-provider "fly" {
-}
-`
-}
-
 type MWithTestApp struct {
 	m *testing.M
 }
