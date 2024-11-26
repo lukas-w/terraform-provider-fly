@@ -2,13 +2,13 @@ package provider
 
 import (
 	"fmt"
-	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
+	"github.com/fly-apps/terraform-provider-fly/internal/test"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"testing"
 )
 
 func TestAccIp_basic(t *testing.T) {
-	appName := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	appName := test.GenerateName()
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,

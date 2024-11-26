@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
+	"github.com/fly-apps/terraform-provider-fly/internal/test"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
@@ -14,7 +14,7 @@ import (
 func TestAccApp_basic(t *testing.T) {
 	appName := "testApp"
 	resourceName := fmt.Sprintf("fly_app.%s", appName)
-	name := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	name := test.GenerateName()
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
@@ -55,7 +55,7 @@ resource "fly_app" "%s" {
 func TestAccApp_secrets_basic(t *testing.T) {
 	appName := "testApp"
 	resourceName := fmt.Sprintf("fly_app.%s", appName)
-	name := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	name := test.GenerateName()
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
@@ -110,7 +110,7 @@ resource "fly_app" "%s" {
 func TestAccApp_secrets_drift(t *testing.T) {
 	appName := "testApp"
 	resourceName := fmt.Sprintf("fly_app.%s", appName)
-	name := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	name := test.GenerateName()
 
 	client := getFlyClient()
 
@@ -206,7 +206,7 @@ resource "fly_app" "%s" {
 func TestAccApp_secrets_unmanaged(t *testing.T) {
 	appName := "testApp"
 	resourceName := fmt.Sprintf("fly_app.%s", appName)
-	name := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	name := test.GenerateName()
 
 	client := getFlyClient()
 

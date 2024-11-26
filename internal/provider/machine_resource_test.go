@@ -2,7 +2,7 @@ package provider
 
 import (
 	"fmt"
-	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
+	"github.com/fly-apps/terraform-provider-fly/internal/test"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"os"
 	"testing"
@@ -10,7 +10,7 @@ import (
 
 func TestAccFlyMachineBase(t *testing.T) {
 	t.Parallel()
-	rName := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	rName := test.GenerateName()
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		PreCheck:                 func() { testAccPreCheck(t) },
@@ -120,7 +120,7 @@ resource "fly_machine" "testMachine" {
 
 func TestAccFlyMachineNoServices(t *testing.T) {
 	t.Parallel()
-	rName := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	rName := test.GenerateName()
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		PreCheck:                 func() { testAccPreCheck(t) },
@@ -155,7 +155,7 @@ resource "fly_machine" "testMachine" {
 
 func TestAccFlyMachineEmptyServices(t *testing.T) {
 	t.Parallel()
-	rName := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	rName := test.GenerateName()
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		PreCheck:                 func() { testAccPreCheck(t) },
@@ -191,7 +191,7 @@ resource "fly_machine" "testMachine" {
 
 func TestAccFlyMachineInitOptions(t *testing.T) {
 	t.Parallel()
-	rName := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	rName := test.GenerateName()
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		PreCheck:                 func() { testAccPreCheck(t) },
@@ -236,7 +236,7 @@ resource "fly_machine" "testMachine" {
 
 func TestAccFlyMachineModifyImage(t *testing.T) {
 	t.Parallel()
-	rName := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	rName := test.GenerateName()
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		PreCheck:                 func() { testAccPreCheck(t) },
