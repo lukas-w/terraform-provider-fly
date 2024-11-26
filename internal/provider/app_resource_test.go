@@ -12,8 +12,6 @@ import (
 )
 
 func TestAccApp_basic(t *testing.T) {
-	appName := "testApp"
-	resourceName := fmt.Sprintf("fly_app.%s", appName)
 	name := test.GenerateName()
 
 	resource.Test(t, resource.TestCase{
@@ -22,29 +20,29 @@ func TestAccApp_basic(t *testing.T) {
 			{
 				Config: fmt.Sprintf(`
 %s
-resource "fly_app" "%s" {
+resource "fly_app" "test" {
 	name = "%s"
 	org = "%s"
 }
-`, providerConfig(), appName, name, getTestOrg()),
+`, providerConfig(), name, getTestOrg()),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr(resourceName, "name", name),
-					resource.TestCheckResourceAttr(resourceName, "org", getTestOrg()),
-					resource.TestCheckResourceAttrSet(resourceName, "orgid"),
-					resource.TestCheckResourceAttrSet(resourceName, "id"),
+					resource.TestCheckResourceAttr("fly_app.test", "name", name),
+					resource.TestCheckResourceAttr("fly_app.test", "org", getTestOrg()),
+					resource.TestCheckResourceAttrSet("fly_app.test", "orgid"),
+					resource.TestCheckResourceAttrSet("fly_app.test", "id"),
 				),
 			},
 			{
 				Config: fmt.Sprintf(`
 %s
-resource "fly_app" "%s" {
+resource "fly_app" "test" {
 	name = "%s"
 	org = "%s"
 }
-`, providerConfig(), appName, name, getTestOrg()),
+`, providerConfig(), name, getTestOrg()),
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PreApply: []plancheck.PlanCheck{
-						plancheck.ExpectResourceAction(resourceName, plancheck.ResourceActionNoop),
+						plancheck.ExpectResourceAction("fly_app.test", plancheck.ResourceActionNoop),
 					},
 				},
 			},
@@ -53,8 +51,6 @@ resource "fly_app" "%s" {
 }
 
 func TestAccApp_secrets_basic(t *testing.T) {
-	appName := "testApp"
-	resourceName := fmt.Sprintf("fly_app.%s", appName)
 	name := test.GenerateName()
 
 	resource.Test(t, resource.TestCase{
@@ -63,44 +59,44 @@ func TestAccApp_secrets_basic(t *testing.T) {
 			{
 				Config: fmt.Sprintf(`
 %s
-resource "fly_app" "%s" {
+resource "fly_app" "test" {
 	name = "%s"
 	org = "%s"
 	secrets = {
 		TEST = {value = "123"}
 	}
 }
-`, providerConfig(), appName, name, getTestOrg()),
+`, providerConfig(), name, getTestOrg()),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr(resourceName, "name", name),
-					resource.TestCheckResourceAttr(resourceName, "org", getTestOrg()),
-					resource.TestCheckResourceAttrSet(resourceName, "orgid"),
-					resource.TestCheckResourceAttrSet(resourceName, "id"),
-					resource.TestCheckResourceAttr(resourceName, "secrets.TEST.value", "123"),
-					resource.TestCheckResourceAttrSet(resourceName, "secrets.TEST.digest"),
-					resource.TestCheckResourceAttrSet(resourceName, "secrets.TEST.created_at"),
+					resource.TestCheckResourceAttr("fly_app.test", "name", name),
+					resource.TestCheckResourceAttr("fly_app.test", "org", getTestOrg()),
+					resource.TestCheckResourceAttrSet("fly_app.test", "orgid"),
+					resource.TestCheckResourceAttrSet("fly_app.test", "id"),
+					resource.TestCheckResourceAttr("fly_app.test", "secrets.TEST.value", "123"),
+					resource.TestCheckResourceAttrSet("fly_app.test", "secrets.TEST.digest"),
+					resource.TestCheckResourceAttrSet("fly_app.test", "secrets.TEST.created_at"),
 				),
 			},
 			{
 				Config: fmt.Sprintf(`
 %s
-resource "fly_app" "%s" {
+resource "fly_app" "test" {
 	name = "%s"
 	org = "%s"
 	secrets = {
 		TEST = {value = "321"}
 	}
 }
-`, providerConfig(), appName, name, getTestOrg()),
+`, providerConfig(), name, getTestOrg()),
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PreApply: []plancheck.PlanCheck{
-						plancheck.ExpectResourceAction(resourceName, plancheck.ResourceActionUpdate),
+						plancheck.ExpectResourceAction("fly_app.test", plancheck.ResourceActionUpdate),
 					},
 				},
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr(resourceName, "secrets.TEST.value", "321"),
-					resource.TestCheckResourceAttrSet(resourceName, "secrets.TEST.digest"),
-					resource.TestCheckResourceAttrSet(resourceName, "secrets.TEST.created_at"),
+					resource.TestCheckResourceAttr("fly_app.test", "secrets.TEST.value", "321"),
+					resource.TestCheckResourceAttrSet("fly_app.test", "secrets.TEST.digest"),
+					resource.TestCheckResourceAttrSet("fly_app.test", "secrets.TEST.created_at"),
 				),
 			},
 		},
@@ -108,8 +104,6 @@ resource "fly_app" "%s" {
 }
 
 func TestAccApp_secrets_drift(t *testing.T) {
-	appName := "testApp"
-	resourceName := fmt.Sprintf("fly_app.%s", appName)
 	name := test.GenerateName()
 
 	client := getFlyClient()
@@ -121,18 +115,18 @@ func TestAccApp_secrets_drift(t *testing.T) {
 			{
 				Config: fmt.Sprintf(`
 %s
-resource "fly_app" "%s" {
+resource "fly_app" "test" {
 	name = "%s"
 	org = "%s"
 	secrets = {
 		TEST = {value = "321"}
 	}
 }
-`, providerConfig(), appName, name, getTestOrg()),
+`, providerConfig(), name, getTestOrg()),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr(resourceName, "secrets.TEST.value", "321"),
-					resource.TestCheckResourceAttrSet(resourceName, "secrets.TEST.digest"),
-					resource.TestCheckResourceAttrSet(resourceName, "secrets.TEST.created_at"),
+					resource.TestCheckResourceAttr("fly_app.test", "secrets.TEST.value", "321"),
+					resource.TestCheckResourceAttrSet("fly_app.test", "secrets.TEST.digest"),
+					resource.TestCheckResourceAttrSet("fly_app.test", "secrets.TEST.created_at"),
 				),
 			},
 			// Secret drift detection
@@ -158,18 +152,18 @@ resource "fly_app" "%s" {
 				},
 				Config: fmt.Sprintf(`
 %s
-resource "fly_app" "%s" {
+resource "fly_app" "test" {
 	name = "%s"
 	org = "%s"
 	secrets = {
 		TEST = {value = "321"}
 	}
 }
-`, providerConfig(), appName, name, getTestOrg()),
+`, providerConfig(), name, getTestOrg()),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr(resourceName, "secrets.TEST.value", "321"),
-					resource.TestCheckResourceAttrSet(resourceName, "secrets.TEST.digest"),
-					resource.TestCheckResourceAttrSet(resourceName, "secrets.TEST.created_at"),
+					resource.TestCheckResourceAttr("fly_app.test", "secrets.TEST.value", "321"),
+					resource.TestCheckResourceAttrSet("fly_app.test", "secrets.TEST.digest"),
+					resource.TestCheckResourceAttrSet("fly_app.test", "secrets.TEST.created_at"),
 					func(state *terraform.State) error {
 						s, err := client.GetAppSecrets(context.Background(), name)
 						if err != nil {
@@ -183,7 +177,7 @@ resource "fly_app" "%s" {
 						}
 						return nil
 					},
-					resource.TestCheckResourceAttrWith(resourceName, "secrets.TEST.digest", func(value string) error {
+					resource.TestCheckResourceAttrWith("fly_app.test", "secrets.TEST.digest", func(value string) error {
 						s, err := client.GetAppSecrets(context.Background(), name)
 						if err != nil {
 							return err
@@ -204,8 +198,6 @@ resource "fly_app" "%s" {
 
 // Verify that we don't touch unmanaged secrets
 func TestAccApp_secrets_unmanaged(t *testing.T) {
-	appName := "testApp"
-	resourceName := fmt.Sprintf("fly_app.%s", appName)
 	name := test.GenerateName()
 
 	client := getFlyClient()
@@ -216,16 +208,16 @@ func TestAccApp_secrets_unmanaged(t *testing.T) {
 			{
 				Config: fmt.Sprintf(`
 %s
-resource "fly_app" "%s" {
+resource "fly_app" "test" {
 	name = "%s"
 	org = "%s"
 	secrets = {
 		TEST = {value = "123"}
 	}
 }
-`, providerConfig(), appName, name, getTestOrg()),
+`, providerConfig(), name, getTestOrg()),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr(resourceName, "secrets.TEST.value", "123"),
+					resource.TestCheckResourceAttr("fly_app.test", "secrets.TEST.value", "123"),
 				),
 			},
 			{
@@ -239,17 +231,17 @@ resource "fly_app" "%s" {
 				},
 				Config: fmt.Sprintf(`
 %s
-resource "fly_app" "%s" {
+resource "fly_app" "test" {
 	name = "%s"
 	org = "%s"
 	secrets = {
 		TEST = {value = "3"}
 	}
 }
-`, providerConfig(), appName, name, getTestOrg()),
+`, providerConfig(), name, getTestOrg()),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttrSet(resourceName, "secrets.TEST.digest"),
-					resource.TestCheckNoResourceAttr(resourceName, "secrets.UNMANAGED.digest"),
+					resource.TestCheckResourceAttrSet("fly_app.test", "secrets.TEST.digest"),
+					resource.TestCheckNoResourceAttr("fly_app.test", "secrets.UNMANAGED.digest"),
 					func(state *terraform.State) error {
 						r, err := client.GetAppSecrets(context.Background(), name)
 						if err != nil {
@@ -268,15 +260,15 @@ resource "fly_app" "%s" {
 			{
 				Config: fmt.Sprintf(`
 %s
-resource "fly_app" "%s" {
+resource "fly_app" "test" {
 	name = "%s"
 	org = "%s"
 	secrets = {}
 }
-`, providerConfig(), appName, name, getTestOrg()),
+`, providerConfig(), name, getTestOrg()),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckNoResourceAttr(resourceName, "secrets.TEST"),
-					resource.TestCheckNoResourceAttr(resourceName, "secrets.UNMANAGED.digest"),
+					resource.TestCheckNoResourceAttr("fly_app.test", "secrets.TEST"),
+					resource.TestCheckNoResourceAttr("fly_app.test", "secrets.UNMANAGED.digest"),
 					func(state *terraform.State) error {
 						r, err := client.GetAppSecrets(context.Background(), name)
 						if err != nil {
