@@ -11,7 +11,7 @@ import (
 	"testing"
 )
 
-func TestAccApp_basic(t *testing.T) {
+func TestAccAppResource_basic(t *testing.T) {
 	name := test.GenerateName()
 
 	resource.Test(t, resource.TestCase{
@@ -48,7 +48,7 @@ resource "fly_app" "test" {
 	})
 }
 
-func TestAccApp_secrets_basic(t *testing.T) {
+func TestAccAppResource_secrets_basic(t *testing.T) {
 	name := test.GenerateName()
 
 	resource.Test(t, resource.TestCase{
@@ -100,7 +100,7 @@ resource "fly_app" "test" {
 }
 
 // Test that we detect and correct when secrets are changed outside terraform
-func TestAccApp_secrets_drift(t *testing.T) {
+func TestAccAppResource_secrets_drift(t *testing.T) {
 	name := test.GenerateName()
 
 	client := test.GetFlyClient()
@@ -192,7 +192,7 @@ resource "fly_app" "test" {
 }
 
 // Verify that we don't touch unmanaged secrets
-func TestAccApp_secrets_unmanaged(t *testing.T) {
+func TestAccAppResource_secrets_unmanaged(t *testing.T) {
 	name := test.GenerateName()
 
 	client := test.GetFlyClient()

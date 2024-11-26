@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestAccIp_basic(t *testing.T) {
+func TestAccIpResource_basic(t *testing.T) {
 	appName := test.GetTestAppName()
 
 	resource.Test(t, resource.TestCase{

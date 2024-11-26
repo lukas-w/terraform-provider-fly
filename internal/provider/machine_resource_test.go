@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestAccFlyMachineBase(t *testing.T) {
+func TestAccMachineResource_Base(t *testing.T) {
 	t.Parallel()
 	rName := test.GenerateName()
 	resource.Test(t, resource.TestCase{
@@ -15,7 +15,7 @@ func TestAccFlyMachineBase(t *testing.T) {
 		PreCheck:                 func() { testAccPreCheck(t) },
 		Steps: []resource.TestStep{
 			{
-				Config: testFlyMachineResourceConfig(rName),
+				Config: testAccMachineResourceConfig(rName),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("fly_machine.testMachine", "name", rName),
 					resource.TestCheckResourceAttr("fly_machine.testMachine", "app", test.GetTestAppName()),
@@ -38,14 +38,14 @@ func TestAccFlyMachineBase(t *testing.T) {
 				),
 			},
 			{
-				Config: testFlyMachineResourceUpdateConfig(rName),
+				Config: testAccMachineResourceUpdateConfig(rName),
 				Check:  resource.TestCheckResourceAttr("fly_machine.testMachine", "config.env.updatedkey", "updatedValue"),
 			},
 		},
 	})
 }
 
-func testFlyMachineResourceConfig(machineName string) string {
+func testAccMachineResourceConfig(machineName string) string {
 	return fmt.Sprintf(`
 resource "fly_machine" "testMachine" {
 	app = "%s"
@@ -77,7 +77,7 @@ resource "fly_machine" "testMachine" {
 `, test.GetTestAppName(), test.GetTestRegion(), machineName)
 }
 
-func testFlyMachineResourceUpdateConfig(machinename string) string {
+func testAccMachineResourceUpdateConfig(machineName string) string {
 	return fmt.Sprintf(`
 resource "fly_machine" "testMachine" {
 	app = "%s"
@@ -106,10 +106,10 @@ resource "fly_machine" "testMachine" {
 		]
 	}
 }
-`, test.GetTestAppName(), test.GetTestRegion(), machinename)
+`, test.GetTestAppName(), test.GetTestRegion(), machineName)
 }
 
-func TestAccFlyMachineNoServices(t *testing.T) {
+func TestAccMachineResource_NoServices(t *testing.T) {
 	t.Parallel()
 	rName := test.GenerateName()
 	resource.Test(t, resource.TestCase{
@@ -117,14 +117,14 @@ func TestAccFlyMachineNoServices(t *testing.T) {
 		PreCheck:                 func() { testAccPreCheck(t) },
 		Steps: []resource.TestStep{
 			{
-				Config: testFlyMachineResourceNoServicesConfig(rName),
+				Config: testAccMachineResourceNoServicesConfig(rName),
 				Check:  resource.TestCheckResourceAttr("fly_machine.testMachine", "name", rName),
 			},
 		},
 	})
 }
 
-func testFlyMachineResourceNoServicesConfig(machineName string) string {
+func testAccMachineResourceNoServicesConfig(machineName string) string {
 	app := test.GetTestAppName()
 
 	return fmt.Sprintf(`
@@ -142,7 +142,7 @@ resource "fly_machine" "testMachine" {
 `, app, test.GetTestRegion(), machineName)
 }
 
-func TestAccFlyMachineEmptyServices(t *testing.T) {
+func TestAccMachineResource_EmptyServices(t *testing.T) {
 	t.Parallel()
 	rName := test.GenerateName()
 	resource.Test(t, resource.TestCase{
@@ -150,14 +150,14 @@ func TestAccFlyMachineEmptyServices(t *testing.T) {
 		PreCheck:                 func() { testAccPreCheck(t) },
 		Steps: []resource.TestStep{
 			{
-				Config: testFlyMachineResourceEmptyServicesConfig(rName),
+				Config: testAccMachineResourceEmptyServicesConfig(rName),
 				Check:  resource.TestCheckResourceAttr("fly_machine.testMachine", "name", rName),
 			},
 		},
 	})
 }
 
-func testFlyMachineResourceEmptyServicesConfig(machineName string) string {
+func testAccMachineResourceEmptyServicesConfig(machineName string) string {
 	return fmt.Sprintf(`
 resource "fly_machine" "testMachine" {
 	app = "%s"
@@ -174,7 +174,7 @@ resource "fly_machine" "testMachine" {
 `, test.GetTestAppName(), test.GetTestRegion(), machineName)
 }
 
-func TestAccFlyMachineInitOptions(t *testing.T) {
+func TestAccMachineResource_InitOptions(t *testing.T) {
 	t.Parallel()
 	rName := test.GenerateName()
 	resource.Test(t, resource.TestCase{
@@ -182,7 +182,7 @@ func TestAccFlyMachineInitOptions(t *testing.T) {
 		PreCheck:                 func() { testAccPreCheck(t) },
 		Steps: []resource.TestStep{
 			{
-				Config: testFlyMachineResourceInitOptionsConfig(rName),
+				Config: testAccMachineResourceInitOptionsConfig(rName),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("fly_machine.testMachine", "name", rName),
 					resource.TestCheckResourceAttr("fly_machine.testMachine", "config.init.cmd.0", "cmdText"),
@@ -194,7 +194,7 @@ func TestAccFlyMachineInitOptions(t *testing.T) {
 	})
 }
 
-func testFlyMachineResourceInitOptionsConfig(machineName string) string {
+func testAccMachineResourceInitOptionsConfig(machineName string) string {
 	return fmt.Sprintf(`
 resource "fly_machine" "testMachine" {
 	app = "%s"
@@ -215,7 +215,7 @@ resource "fly_machine" "testMachine" {
 `, test.GetTestAppName(), test.GetTestRegion(), machineName)
 }
 
-func TestAccFlyMachineModifyImage(t *testing.T) {
+func TestAccMachineResource_ModifyImage(t *testing.T) {
 	t.Parallel()
 	rName := test.GenerateName()
 	resource.Test(t, resource.TestCase{
@@ -223,16 +223,16 @@ func TestAccFlyMachineModifyImage(t *testing.T) {
 		PreCheck:                 func() { testAccPreCheck(t) },
 		Steps: []resource.TestStep{
 			{
-				Config: testFlyMachineResourceConfig(rName),
+				Config: testAccMachineResourceConfig(rName),
 			},
 			{
-				Config: testFlyMachineResourceChangeImageConfig(rName),
+				Config: testAccMachineResourceChangeImageConfig(rName),
 			},
 		},
 	})
 }
 
-func testFlyMachineResourceChangeImageConfig(machineName string) string {
+func testAccMachineResourceChangeImageConfig(machineName string) string {
 	return fmt.Sprintf(`
 resource "fly_machine" "testMachine" {
 	app = "%s"
@@ -264,23 +264,23 @@ resource "fly_machine" "testMachine" {
 `, test.GetTestAppName(), test.GetTestRegion(), machineName)
 }
 
-func TestAccFlyMachineEmptyName(t *testing.T) {
+func TestAccMachineResource_EmptyName(t *testing.T) {
 	t.Parallel()
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		PreCheck:                 func() { testAccPreCheck(t) },
 		Steps: []resource.TestStep{
 			{
-				Config: testFlyMachineResourceEmptyNameConfig(),
+				Config: testAccMachineResourceEmptyNameConfig(),
 			},
 			{
-				Config: testFlyMachineResourceEmptyNameUpdateConfig(),
+				Config: testAccMachineResourceEmptyNameUpdateConfig(),
 			},
 		},
 	})
 }
 
-func testFlyMachineResourceEmptyNameConfig() string {
+func testAccMachineResourceEmptyNameConfig() string {
 	return fmt.Sprintf(`
 resource "fly_machine" "testMachine" {
 	app = "%s"
@@ -311,7 +311,7 @@ resource "fly_machine" "testMachine" {
 `, test.GetTestAppName(), test.GetTestRegion())
 }
 
-func testFlyMachineResourceEmptyNameUpdateConfig() string {
+func testAccMachineResourceEmptyNameUpdateConfig() string {
 	return fmt.Sprintf(`
 resource "fly_machine" "testMachine" {
 	app = "%s"
@@ -342,7 +342,7 @@ resource "fly_machine" "testMachine" {
 `, test.GetTestAppName(), test.GetTestRegion())
 }
 
-func TestAccFlyMachineGuest(t *testing.T) {
+func TestAccMachineResource_Guest(t *testing.T) {
 	t.Parallel()
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
@@ -374,7 +374,7 @@ resource "fly_machine" "testMachine" {
 	})
 }
 
-func TestAccFlyMachineChecks(t *testing.T) {
+func TestAccMachineResource_Checks(t *testing.T) {
 	t.Parallel()
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
