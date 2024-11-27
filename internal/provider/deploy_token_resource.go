@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"fmt"
 	"github.com/fly-apps/terraform-provider-fly/graphql"
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -93,6 +94,9 @@ func (a deployTokenResource) Create(ctx context.Context, req resource.CreateRequ
 	app, err := a.apiClient.GetApp(ctx, plan.App.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to get app", err.Error())
+	}
+	if app == nil {
+		resp.Diagnostics.AddError("App not found", fmt.Sprintf("App %s not found", plan.App.ValueString()))
 	}
 
 	token, err := graphql.CreateLimitedAccessToken(ctx, a.gqlClient, graphql.CreateLimitedAccessTokenInput{
