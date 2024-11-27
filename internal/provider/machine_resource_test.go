@@ -408,3 +408,42 @@ resource "fly_machine" "testMachine" {
 		},
 	})
 }
+
+func TestAccMachineResource_Mounts(t *testing.T) {
+	t.Parallel()
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		PreCheck:                 func() { testAccPreCheck(t) },
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(`
+resource "fly_volume" "test" {
+	app = "%[1]s"
+	size = 3
+	name = "test"
+	region = "%[2]s"
+}
+resource "fly_machine" "testMachine" {
+	app = "%[1]s"
+	region = "%[2]s"
+	config = {
+		image = "nginx:latest"
+		mounts = [
+			{
+				volume = fly_volume.test.id
+				path = "/mnt"
+			}
+		]
+	}
+}
+`, test.GetTestAppName(), test.GetTestRegion()),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("fly_machine.testMachine", "config.mounts.0.volume"),
+					resource.TestCheckResourceAttr("fly_machine.testMachine", "config.mounts.0.path", "/mnt"),
+					resource.TestCheckResourceAttr("fly_machine.testMachine", "config.mounts.0.encrypted", "true"),
+					resource.TestCheckResourceAttr("fly_machine.testMachine", "config.mounts.0.size_gb", "3"),
+				),
+			},
+		},
+	})
+}

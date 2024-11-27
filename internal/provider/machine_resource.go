@@ -11,6 +11,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/mapdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/mapplanmodifier"
@@ -101,17 +103,14 @@ func (flyMachineResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 						Attributes: map[string]schema.Attribute{
 							"cmd": schema.ListAttribute{
 								Optional: true,
-								//Computed:            true,
 								ElementType: types.StringType,
 							},
 							"entrypoint": schema.ListAttribute{
 								Optional: true,
-								//Computed:            true,
 								ElementType: types.StringType,
 							},
 							"exec": schema.ListAttribute{
 								Optional: true,
-								//Computed:            true,
 								ElementType: types.StringType,
 							},
 						},
@@ -162,25 +161,21 @@ func (flyMachineResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 						Optional:            true,
 						NestedObject: schema.NestedAttributeObject{
 							Attributes: map[string]schema.Attribute{
-								//"encrypted": {
-								//	Optional:      true,
-								//	Computed:      true,
-								//	Type:          types.BoolType,
-								//	PlanModifiers: []tfsdk.AttributePlanModifier{resource.UseStateForUnknown()},
-								//},
 								"path": schema.StringAttribute{
 									Required:            true,
 									MarkdownDescription: "Path for volume to be mounted on vm",
 								},
-								//"size_gb": {
-								//	Optional:      true,
-								//	Computed:      true,
-								//	Type:          types.Int64Type,
-								//	PlanModifiers: []tfsdk.AttributePlanModifier{resource.UseStateForUnknown()},
-								//},
 								"volume": schema.StringAttribute{
 									Required:            true,
 									MarkdownDescription: "ID of volume",
+								},
+								"encrypted": schema.BoolAttribute{
+									Computed:      true,
+									PlanModifiers: []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
+								},
+								"size_gb": schema.Int64Attribute{
+									Computed:      true,
+									PlanModifiers: []planmodifier.Int64{int64planmodifier.UseStateForUnknown()},
 								},
 							},
 						},

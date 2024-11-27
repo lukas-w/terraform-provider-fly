@@ -21,6 +21,8 @@ The following changes were made since then:
   - Nested attributes `env`, `processes`, `image`, `metadata`, `mounts`, `restart`, `services`,
     `guest`, `metrics` & `checks` in new `config` attribute
   - Nested attributes `exec`, `entrypoint`, `cmd` in new `init` attribute
+  - Made attributes `encrypted` and `size_gb` computed as they are not documented to be settable.
+    Use the corresponding attributes in the `fly_volume` resource instead.
 
 ### Enhancements
 

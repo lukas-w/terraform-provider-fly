@@ -312,9 +312,7 @@ func (d *flyMachineConfigData) toApiConfig(ctx context.Context, diags *diag.Diag
 		var mounts []fly.MachineMount
 		for _, m := range d.Mounts {
 			mounts = append(mounts, fly.MachineMount{
-				Encrypted: m.Encrypted.ValueBool(),
 				Path:      m.Path.ValueString(),
-				SizeGb:    int(m.SizeGb.ValueInt64()),
 				Volume:    m.Volume.ValueString(),
 			})
 		}
