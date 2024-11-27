@@ -72,7 +72,7 @@ The following changes were made since then:
 ### Internal Changes
 
 - Upgraded from `terraform-plugin-framework` 0.11 to 1.13
-- Added acceptance tests for `fly_app` & `fly_ip`
+- Added acceptance tests for `fly_app`, `fly_ip` & `fly_volume` resources
 - Reduce custom API client code by using official `fly-go` & `flyctl` where possible
 - Various refactorings to reduce duplicated code
 - Remove generated code & docs from version control

@@ -73,6 +73,8 @@ func (vr flyVolumeResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 					}, "volumes cannot be made smaller", "volumes cannot be made smaller"),
 				},
 			},
+			// TODO: Enforce name requirements as per API error message:
+			//  "name only allows alphanumeric characters and underscores with at most 30 characters"
 			"name": schema.StringAttribute{
 				MarkdownDescription: NAME_DESC,
 				Required:            true,
