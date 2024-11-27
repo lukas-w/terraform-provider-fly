@@ -2,11 +2,11 @@ package provider
 
 import (
 	"context"
-	"github.com/fly-apps/terraform-provider-fly/graphql"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/lukas-w/terraform-provider-fly/graphql"
 	"time"
 )
 

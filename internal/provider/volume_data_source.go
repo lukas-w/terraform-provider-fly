@@ -2,10 +2,10 @@ package provider
 
 import (
 	"context"
-	"github.com/fly-apps/terraform-provider-fly/graphql"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/lukas-w/terraform-provider-fly/graphql"
 )
 
 var _ datasource.DataSourceWithConfigure = &volumeDataSource{}

@@ -3,10 +3,10 @@ package provider
 import (
 	"context"
 	"errors"
-	"github.com/fly-apps/terraform-provider-fly/graphql"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/lukas-w/terraform-provider-fly/graphql"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 

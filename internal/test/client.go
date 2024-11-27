@@ -2,8 +2,8 @@ package test
 
 import (
 	"context"
-	"github.com/fly-apps/terraform-provider-fly/graphql"
-	"github.com/fly-apps/terraform-provider-fly/internal/flyapi"
+	"github.com/lukas-w/terraform-provider-fly/graphql"
+	"github.com/lukas-w/terraform-provider-fly/internal/flyapi"
 	"github.com/superfly/fly-go"
 	"log"
 	"os"

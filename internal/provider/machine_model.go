@@ -2,11 +2,11 @@ package provider
 
 import (
 	"context"
-	"github.com/fly-apps/terraform-provider-fly/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/lukas-w/terraform-provider-fly/internal/utils"
 	"github.com/superfly/fly-go"
 )
 

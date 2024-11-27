@@ -1,10 +1,10 @@
 package provider
 
 import (
-	"github.com/fly-apps/terraform-provider-fly/internal/test"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/lukas-w/terraform-provider-fly/internal/test"
 	"log"
 	"os"
 	"testing"

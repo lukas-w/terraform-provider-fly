@@ -1,4 +1,4 @@
-module github.com/fly-apps/terraform-provider-fly
+module github.com/lukas-w/terraform-provider-fly
 
 go 1.23.1
 

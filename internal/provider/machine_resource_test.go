@@ -2,8 +2,8 @@ package provider
 
 import (
 	"fmt"
-	"github.com/fly-apps/terraform-provider-fly/internal/test"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/lukas-w/terraform-provider-fly/internal/test"
 	"testing"
 )
 
