@@ -1,10 +1,11 @@
 package provider
 
 import (
-	"context"
+	"github.com/fly-apps/terraform-provider-fly/internal/test"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
-	"github.com/superfly/fly-go"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"log"
 	"os"
 	"testing"
 )
@@ -18,38 +19,36 @@ func testAccPreCheck(t *testing.T) {
 	if !hasKey {
 		t.Fatalf("Need api key in FLY_API_TOKEN")
 	}
-	_, hasApp := os.LookupEnv("FLY_TF_TEST_APP")
-	if !hasApp {
-		t.Fatalf("Need app in FLY_TF_TEST_APP")
-	}
 }
 
-func getFlyClient() fly.Client {
-	fly.SetBaseURL(baseUrl)
-	return *fly.NewClient(os.Getenv("FLY_API_TOKEN"), "terraform-provider-fly", "test", logger{context.Background()})
+type MWithTestApp struct {
+	m *testing.M
 }
 
-func getTestOrg() string {
-	org, ok := os.LookupEnv("FLY_TF_TEST_ORG")
-	if ok {
-		return org
+func (a MWithTestApp) Run() int {
+	// Create one test app for all tests that need one
+	appName, err := test.CreateTestApp()
+	if err != nil {
+		log.Fatalf("Error creating test app: %v", err)
 	} else {
-		return "fly-terraform-ci"
+		log.Printf("Created test app %s", appName)
 	}
+	code := a.m.Run()
+
+	err = test.DeleteTestApp()
+	if err != nil {
+		log.Fatalf("Error deleting test app: %v", err)
+	}
+
+	return code
 }
 
-func getTestRegion() string {
-	region, ok := os.LookupEnv("FLY_TF_TEST_REGION")
-	if ok {
-		return region
-	} else {
-		return "ewr"
-	}
-}
-
-func providerConfig() string {
-	return `
-provider "fly" {
-}
-`
+func TestMain(m *testing.M) {
+	// resource.TestMain doesn't call m.Run() when sweeping. Putting out test app creation & deletion
+	// within m.Run() therefore ensures that it's only run when actually running tests.
+	resource.TestMain(
+		MWithTestApp{
+			m: m,
+		},
+	)
 }

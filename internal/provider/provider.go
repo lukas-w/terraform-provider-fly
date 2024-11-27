@@ -3,37 +3,19 @@ package provider
 import (
 	"context"
 	"fmt"
-	"github.com/Khan/genqlient/graphql"
+	"github.com/fly-apps/terraform-provider-fly/internal/flyapi"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	tfsdkprovider "github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/superfly/fly-go"
 	"github.com/superfly/fly-go/flaps"
-	"github.com/superfly/fly-go/tokens"
 	"os"
 )
 
 var _ tfsdkprovider.Provider = &provider{}
-
-const baseUrl = "https://api.fly.io"
-
-type gqlClient graphql.Client
-
-type logger struct {
-	context.Context
-}
-
-func (l logger) Debug(v ...interface{}) {
-	tflog.Debug(l.Context, fmt.Sprint(v...))
-}
-
-func (l logger) Debugf(format string, v ...interface{}) {
-	tflog.Debug(l.Context, fmt.Sprintf(format, v...))
-}
 
 type provider struct {
 	version string
@@ -41,11 +23,9 @@ type provider struct {
 }
 
 type providerApi struct {
-	httpEndpoint string
-	gqlClient    gqlClient
-	apiClient    fly.Client
-	flapsClients map[string]*flaps.Client
-	tokens       *tokens.Tokens
+	c         *flyapi.Clients
+	gqlClient flyapi.GqlClient
+	apiClient fly.Client
 }
 
 func (c *providerApi) configure(providerData any, diags *diag.Diagnostics) {
@@ -64,31 +44,10 @@ func (c *providerApi) configure(providerData any, diags *diag.Diagnostics) {
 }
 
 func (p *providerApi) getFlapsClient(ctx context.Context, app string, diags *diag.Diagnostics) *flaps.Client {
-	if p.flapsClients == nil {
-		p.flapsClients = make(map[string]*flaps.Client)
-	}
-
-	if client, ok := p.flapsClients[app]; ok {
-		return client
-	}
-
-	appCompact, err := p.apiClient.GetAppCompact(ctx, app)
+	client, err := p.c.GetFlapsClient(ctx, app)
 	if err != nil {
-		diags.AddError("Failed to get app compact", err.Error())
-		return nil
+		diags.AddError("Error getting flaps client", err.Error())
 	}
-	client, err := flaps.NewWithOptions(ctx, flaps.NewClientOpts{
-		AppName:    app,
-		AppCompact: appCompact,
-		Tokens:     p.tokens,
-		//OrgSlug:     appCompact.Organization.Slug,
-	})
-	if err != nil {
-		diags.AddError("Failed to create flaps client", err.Error())
-		return nil
-	}
-
-	p.flapsClients[app] = client
 	return client
 }
 
@@ -129,18 +88,6 @@ func (p *provider) Configure(ctx context.Context, req tfsdkprovider.ConfigureReq
 
 	p.token = token
 
-	apiBaseUrl, exists := os.LookupEnv("FLY_HTTP_ENDPOINT")
-	httpEndpoint := "127.0.0.1:4280"
-	if !data.FlyHttpEndpoint.IsNull() && !data.FlyHttpEndpoint.IsUnknown() {
-		httpEndpoint = data.FlyHttpEndpoint.ValueString()
-	} else if exists {
-		httpEndpoint = apiBaseUrl
-	}
-
-	var clients providerApi
-	clients.httpEndpoint = httpEndpoint
-	clients.tokens = tokens.Parse(token)
-
 	enableTracing := false
 	_, ok := os.LookupEnv("DEBUG")
 	if ok {
@@ -148,18 +95,16 @@ func (p *provider) Configure(ctx context.Context, req tfsdkprovider.ConfigureReq
 		resp.Diagnostics.AddWarning("Debug mode enabled", "Debug mode enabled, this will add the Fly-Force-Trace header to all graphql requests")
 	}
 
-	fly.SetBaseURL(baseUrl)
-	clients.apiClient = *fly.NewClientFromOptions(fly.ClientOptions{
-		AccessToken: p.token,
-		//Tokens:           nil,
-		Name:    "terraform-provider-fly",
-		Version: p.version,
-		//BaseURL:          "",
-		Logger:           logger{ctx},
-		EnableDebugTrace: &enableTracing,
-		//Transport:        nil,
+	var clients providerApi
+	api := flyapi.New(ctx, flyapi.Options{
+		AccessToken:      token,
+		Version:          p.version,
+		EnableDebugTrace: enableTracing,
 	})
-	clients.gqlClient = clients.apiClient.GenqClient()
+	clients.c = api
+	clients.apiClient = api.FlyGo
+	clients.gqlClient = api.Gql
+
 	fly.SetErrorLog(true)
 
 	resp.ResourceData = &clients
