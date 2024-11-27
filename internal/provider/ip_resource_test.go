@@ -25,7 +25,7 @@ resource "fly_ip" "ip" {
 	type = "v6"
 	private = true
 }
-`, providerConfig(), appName, getTestOrg()),
+`, providerConfig(), appName, test.GetTestOrg()),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("fly_app.app", "id"),
 					resource.TestCheckResourceAttrSet("fly_ip.ip", "address"),

@@ -24,10 +24,10 @@ resource "fly_app" "test" {
 	name = "%s"
 	org = "%s"
 }
-`, providerConfig(), name, getTestOrg()),
+`, providerConfig(), name, test.GetTestOrg()),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("fly_app.test", "name", name),
-					resource.TestCheckResourceAttr("fly_app.test", "org", getTestOrg()),
+					resource.TestCheckResourceAttr("fly_app.test", "org", test.GetTestOrg()),
 					resource.TestCheckResourceAttrSet("fly_app.test", "orgid"),
 					resource.TestCheckResourceAttrSet("fly_app.test", "id"),
 				),
@@ -39,7 +39,7 @@ resource "fly_app" "test" {
 	name = "%s"
 	org = "%s"
 }
-`, providerConfig(), name, getTestOrg()),
+`, providerConfig(), name, test.GetTestOrg()),
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PreApply: []plancheck.PlanCheck{
 						plancheck.ExpectResourceAction("fly_app.test", plancheck.ResourceActionNoop),
@@ -66,10 +66,10 @@ resource "fly_app" "test" {
 		TEST = {value = "123"}
 	}
 }
-`, providerConfig(), name, getTestOrg()),
+`, providerConfig(), name, test.GetTestOrg()),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("fly_app.test", "name", name),
-					resource.TestCheckResourceAttr("fly_app.test", "org", getTestOrg()),
+					resource.TestCheckResourceAttr("fly_app.test", "org", test.GetTestOrg()),
 					resource.TestCheckResourceAttrSet("fly_app.test", "orgid"),
 					resource.TestCheckResourceAttrSet("fly_app.test", "id"),
 					resource.TestCheckResourceAttr("fly_app.test", "secrets.TEST.value", "123"),
@@ -87,7 +87,7 @@ resource "fly_app" "test" {
 		TEST = {value = "321"}
 	}
 }
-`, providerConfig(), name, getTestOrg()),
+`, providerConfig(), name, test.GetTestOrg()),
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PreApply: []plancheck.PlanCheck{
 						plancheck.ExpectResourceAction("fly_app.test", plancheck.ResourceActionUpdate),
@@ -107,7 +107,7 @@ resource "fly_app" "test" {
 func TestAccApp_secrets_drift(t *testing.T) {
 	name := test.GenerateName()
 
-	client := getFlyClient()
+	client := test.GetFlyClient()
 
 	var digest1 string
 	resource.Test(t, resource.TestCase{
@@ -123,7 +123,7 @@ resource "fly_app" "test" {
 		TEST = {value = "321"}
 	}
 }
-`, providerConfig(), name, getTestOrg()),
+`, providerConfig(), name, test.GetTestOrg()),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("fly_app.test", "secrets.TEST.value", "321"),
 					resource.TestCheckResourceAttrSet("fly_app.test", "secrets.TEST.digest"),
@@ -160,7 +160,7 @@ resource "fly_app" "test" {
 		TEST = {value = "321"}
 	}
 }
-`, providerConfig(), name, getTestOrg()),
+`, providerConfig(), name, test.GetTestOrg()),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("fly_app.test", "secrets.TEST.value", "321"),
 					resource.TestCheckResourceAttrSet("fly_app.test", "secrets.TEST.digest"),
@@ -201,7 +201,7 @@ resource "fly_app" "test" {
 func TestAccApp_secrets_unmanaged(t *testing.T) {
 	name := test.GenerateName()
 
-	client := getFlyClient()
+	client := test.GetFlyClient()
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
@@ -216,7 +216,7 @@ resource "fly_app" "test" {
 		TEST = {value = "123"}
 	}
 }
-`, providerConfig(), name, getTestOrg()),
+`, providerConfig(), name, test.GetTestOrg()),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("fly_app.test", "secrets.TEST.value", "123"),
 				),
@@ -239,7 +239,7 @@ resource "fly_app" "test" {
 		TEST = {value = "3"}
 	}
 }
-`, providerConfig(), name, getTestOrg()),
+`, providerConfig(), name, test.GetTestOrg()),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("fly_app.test", "secrets.TEST.digest"),
 					resource.TestCheckNoResourceAttr("fly_app.test", "secrets.UNMANAGED.digest"),
@@ -266,7 +266,7 @@ resource "fly_app" "test" {
 	org = "%s"
 	secrets = {}
 }
-`, providerConfig(), name, getTestOrg()),
+`, providerConfig(), name, test.GetTestOrg()),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckNoResourceAttr("fly_app.test", "secrets.TEST"),
 					resource.TestCheckNoResourceAttr("fly_app.test", "secrets.UNMANAGED.digest"),
@@ -287,4 +287,8 @@ resource "fly_app" "test" {
 			},
 		},
 	})
+}
+
+func init() {
+	resource.AddTestSweepers(test.FlyAppSweeper.Name, &test.FlyAppSweeper)
 }
