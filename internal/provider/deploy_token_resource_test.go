@@ -4,12 +4,11 @@ import (
 	"fmt"
 	"github.com/fly-apps/terraform-provider-fly/internal/test"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
-	"os"
 	"testing"
 )
 
 func TestAccDeployTokenResource_basic(t *testing.T) {
-	appName := os.Getenv("FLY_TF_TEST_APP")
+	appName := test.GetTestAppName()
 	tokenName := test.GenerateName()
 
 	resource.Test(t, resource.TestCase{

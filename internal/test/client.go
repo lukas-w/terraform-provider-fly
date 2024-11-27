@@ -51,3 +51,36 @@ func GetTestRegion() string {
 	}
 }
 
+func GetTestAppName() string {
+	if testApp == nil {
+		log.Fatal("Test app not created")
+	}
+	return testApp.Name
+}
+
+func CreateTestApp() (string, error) {
+	name := GenerateName()
+	app, err := GetFlyClient().FlyGo.CreateApp(
+		context.Background(), fly.CreateAppInput{
+			Name:           name,
+			OrganizationID: GetTestOrgID(),
+		},
+	)
+	if err != nil {
+		return "", err
+	}
+	testApp = app
+	return testApp.Name, nil
+}
+
+func DeleteTestApp() error {
+	if testApp == nil {
+		log.Print("Test app not created")
+		return nil
+	}
+	err := GetFlyClient().FlyGo.DeleteApp(context.Background(), testApp.Name)
+	if err != nil {
+		return err
+	}
+	return nil
+}

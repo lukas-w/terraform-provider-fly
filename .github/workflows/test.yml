@@ -59,16 +59,7 @@ jobs:
       - uses: actions/checkout@v3
       - run: go mod download
 
-      - run: |
-          echo "FLY_TF_TEST_APP=terraform-test-${{ github.run_id }}-${{ strategy.job-index }}" >> $GITHUB_ENV
-      - run: |
-          flyctl apps create "${{ env.FLY_TF_TEST_APP }}" --machines --org "${{ env.FLY_TF_TEST_ORG }}"
-
       - run: go test -v -cover ./internal/provider/
         env:
           TF_ACC: "1"
         timeout-minutes: 10
-
-      - run: |
-          flyctl apps destroy "${{ env.FLY_TF_TEST_APP }}" --yes
-        if: ${{ always() }}

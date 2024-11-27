@@ -1,8 +1,11 @@
 package provider
 
 import (
+	"github.com/fly-apps/terraform-provider-fly/internal/test"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"log"
 	"os"
 	"testing"
 )
@@ -23,4 +26,36 @@ func providerConfig() string {
 provider "fly" {
 }
 `
+}
+
+type MWithTestApp struct {
+	m *testing.M
+}
+
+func (a MWithTestApp) Run() int {
+	// Create one test app for all tests that need one
+	appName, err := test.CreateTestApp()
+	if err != nil {
+		log.Fatalf("Error creating test app: %v", err)
+	} else {
+		log.Printf("Created test app %s", appName)
+	}
+	code := a.m.Run()
+
+	err = test.DeleteTestApp()
+	if err != nil {
+		log.Fatalf("Error deleting test app: %v", err)
+	}
+
+	return code
+}
+
+func TestMain(m *testing.M) {
+	// resource.TestMain doesn't call m.Run() when sweeping. Putting out test app creation & deletion
+	// within m.Run() therefore ensures that it's only run when actually running tests.
+	resource.TestMain(
+		MWithTestApp{
+			m: m,
+		},
+	)
 }
