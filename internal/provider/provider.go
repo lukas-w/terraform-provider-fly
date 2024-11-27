@@ -111,7 +111,7 @@ func (p *provider) Configure(ctx context.Context, req tfsdkprovider.ConfigureReq
 	resp.DataSourceData = &clients
 }
 
-func (p *provider) Resources(ctx context.Context) []func() resource.Resource {
+func (p *provider) Resources(context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		newAppResource,
 		newDeployTokenResource,
@@ -126,7 +126,7 @@ func (p *provider) Resources(ctx context.Context) []func() resource.Resource {
 	}
 }
 
-func (p *provider) DataSources(ctx context.Context) []func() datasource.DataSource {
+func (p *provider) DataSources(context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
 		newAppDataSource,
 		newCertDataSource,
@@ -136,11 +136,11 @@ func (p *provider) DataSources(ctx context.Context) []func() datasource.DataSour
 	}
 }
 
-func (p *provider) Metadata(ctx context.Context, req tfsdkprovider.MetadataRequest, resp *tfsdkprovider.MetadataResponse) {
+func (p *provider) Metadata(_ context.Context, _ tfsdkprovider.MetadataRequest, resp *tfsdkprovider.MetadataResponse) {
 	resp.TypeName = "fly"
 }
 
-func (p *provider) Schema(ctx context.Context, req tfsdkprovider.SchemaRequest, resp *tfsdkprovider.SchemaResponse) {
+func (p *provider) Schema(_ context.Context, _ tfsdkprovider.SchemaRequest, resp *tfsdkprovider.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			"fly_api_token": schema.StringAttribute{

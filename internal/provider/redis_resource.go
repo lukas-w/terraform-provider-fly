@@ -37,7 +37,7 @@ func newRedisResource() resource.Resource {
 	return &redisResource{}
 }
 
-func (r redisResource) Metadata(ctx context.Context, request resource.MetadataRequest, response *resource.MetadataResponse) {
+func (r redisResource) Metadata(_ context.Context, _ resource.MetadataRequest, response *resource.MetadataResponse) {
 	response.TypeName = "fly_redis"
 }
 

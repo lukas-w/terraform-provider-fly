@@ -7,7 +7,6 @@ import (
 	"github.com/fly-apps/terraform-provider-fly/graphql"
 	"github.com/fly-apps/terraform-provider-fly/internal/provider/modifiers"
 	"github.com/fly-apps/terraform-provider-fly/internal/utils"
-	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -35,19 +34,7 @@ type appSecret struct {
 	CreatedAt types.String `tfsdk:"created_at"`
 }
 
-var secretType = types.ObjectType{
-	AttrTypes: map[string]attr.Type{
-		"value":      types.StringType,
-		"digest":     types.StringType,
-		"created_at": types.StringType,
-	},
-}
-
 type secretMap map[string]appSecret
-
-//var secretMapType = types.MapType{ElemType: secretType}
-
-//type secretMap types.Map
 
 type flyAppResourceData struct {
 	Name         types.String `tfsdk:"name"`

@@ -166,7 +166,7 @@ func (ir flyIpResource) Read(ctx context.Context, req resource.ReadRequest, resp
 	}
 }
 
-func (ir flyIpResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+func (ir flyIpResource) Update(_ context.Context, _ resource.UpdateRequest, resp *resource.UpdateResponse) {
 	resp.Diagnostics.AddError("The fly api does not allow updating ips once created", "Try deleting and then recreating the ip with new options")
 	return
 }

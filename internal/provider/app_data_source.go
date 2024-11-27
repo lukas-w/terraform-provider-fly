@@ -10,7 +10,6 @@ import (
 
 var _ datasource.DataSourceWithConfigure = &appDataSource{}
 
-// Matches getSchema
 type appDataSourceOutput struct {
 	Name           types.String `tfsdk:"name"`
 	AppUrl         types.String `tfsdk:"appurl"`
@@ -21,7 +20,6 @@ type appDataSourceOutput struct {
 	Healthchecks   []string     `tfsdk:"healthchecks"`
 	Ipaddresses    []string     `tfsdk:"ipaddresses"`
 	Currentrelease types.String `tfsdk:"currentrelease"`
-	//Secrets        types.Map    `tfsdk:"secrets"`
 }
 
 func (d appDataSource) Metadata(_ context.Context, _ datasource.MetadataRequest, resp *datasource.MetadataResponse) {

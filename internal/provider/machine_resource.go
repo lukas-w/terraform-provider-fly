@@ -712,12 +712,3 @@ func (mr flyMachineResource) WaitForChecks(ctx context.Context, data flyMachineR
 	diags.AddError("too many API errors while waiting for health checks", fmt.Sprintf("last error: %s", err.Error()))
 	return
 }
-
-func allChecksPassing(checks []*fly.MachineCheckStatus) bool {
-	for _, c := range checks {
-		if c.Status != "passing" {
-			return false
-		}
-	}
-	return true
-}

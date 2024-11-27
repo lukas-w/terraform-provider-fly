@@ -67,11 +67,10 @@ func (f flyWireguardTokenResource) Create(ctx context.Context, req resource.Crea
 	resp.Diagnostics.Append(resp.State.Set(ctx, data)...)
 }
 
-func (f flyWireguardTokenResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-
+func (f flyWireguardTokenResource) Read(context.Context, resource.ReadRequest, *resource.ReadResponse) {
 }
 
-func (f flyWireguardTokenResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+func (f flyWireguardTokenResource) Update(context.Context, resource.UpdateRequest, *resource.UpdateResponse) {
 }
 
 func (f flyWireguardTokenResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {

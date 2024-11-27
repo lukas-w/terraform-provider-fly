@@ -57,7 +57,7 @@ func newOrganizationDataSource() datasource.DataSource {
 	return &organizationDataSource{}
 }
 
-func (s organizationDataSource) Metadata(ctx context.Context, request datasource.MetadataRequest, response *datasource.MetadataResponse) {
+func (s organizationDataSource) Metadata(_ context.Context, _ datasource.MetadataRequest, response *datasource.MetadataResponse) {
 	response.TypeName = "fly_organization"
 }
 
