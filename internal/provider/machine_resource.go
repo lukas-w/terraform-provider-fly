@@ -102,15 +102,15 @@ func (flyMachineResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 						Optional: true,
 						Attributes: map[string]schema.Attribute{
 							"cmd": schema.ListAttribute{
-								Optional: true,
+								Optional:    true,
 								ElementType: types.StringType,
 							},
 							"entrypoint": schema.ListAttribute{
-								Optional: true,
+								Optional:    true,
 								ElementType: types.StringType,
 							},
 							"exec": schema.ListAttribute{
-								Optional: true,
+								Optional:    true,
 								ElementType: types.StringType,
 							},
 						},
