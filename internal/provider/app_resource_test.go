@@ -103,6 +103,7 @@ resource "fly_app" "test" {
 	})
 }
 
+// Test that we detect and correct when secrets are changed outside terraform
 func TestAccApp_secrets_drift(t *testing.T) {
 	name := test.GenerateName()
 
@@ -132,18 +133,18 @@ resource "fly_app" "test" {
 			// Secret drift detection
 			{
 				PreConfig: func() {
-					s, err := client.GetAppSecrets(context.Background(), name)
+					s, err := client.FlyGo.GetAppSecrets(context.Background(), name)
 					if err != nil {
 						t.Fatal(err)
 					}
 					oldSecret := s[0]
-					_, err = client.SetSecrets(context.Background(), name, map[string]string{
+					_, err = client.FlyGo.SetSecrets(context.Background(), name, map[string]string{
 						"TEST": "1234",
 					})
 					if err != nil {
 						t.Fatal(err)
 					}
-					s, err = client.GetAppSecrets(context.Background(), name)
+					s, err = client.FlyGo.GetAppSecrets(context.Background(), name)
 					newSecret := s[0]
 					if newSecret.Digest == oldSecret.Digest {
 						t.Fatal("fly API SetSecret had no effect")
@@ -165,7 +166,7 @@ resource "fly_app" "test" {
 					resource.TestCheckResourceAttrSet("fly_app.test", "secrets.TEST.digest"),
 					resource.TestCheckResourceAttrSet("fly_app.test", "secrets.TEST.created_at"),
 					func(state *terraform.State) error {
-						s, err := client.GetAppSecrets(context.Background(), name)
+						s, err := client.FlyGo.GetAppSecrets(context.Background(), name)
 						if err != nil {
 							return err
 						}
@@ -178,7 +179,7 @@ resource "fly_app" "test" {
 						return nil
 					},
 					resource.TestCheckResourceAttrWith("fly_app.test", "secrets.TEST.digest", func(value string) error {
-						s, err := client.GetAppSecrets(context.Background(), name)
+						s, err := client.FlyGo.GetAppSecrets(context.Background(), name)
 						if err != nil {
 							return err
 						}
@@ -222,7 +223,7 @@ resource "fly_app" "test" {
 			},
 			{
 				PreConfig: func() {
-					_, err := client.SetSecrets(context.Background(), name, map[string]string{
+					_, err := client.FlyGo.SetSecrets(context.Background(), name, map[string]string{
 						"UNMANAGED": "1",
 					})
 					if err != nil {
@@ -243,7 +244,7 @@ resource "fly_app" "test" {
 					resource.TestCheckResourceAttrSet("fly_app.test", "secrets.TEST.digest"),
 					resource.TestCheckNoResourceAttr("fly_app.test", "secrets.UNMANAGED.digest"),
 					func(state *terraform.State) error {
-						r, err := client.GetAppSecrets(context.Background(), name)
+						r, err := client.FlyGo.GetAppSecrets(context.Background(), name)
 						if err != nil {
 							return err
 						}
@@ -270,7 +271,7 @@ resource "fly_app" "test" {
 					resource.TestCheckNoResourceAttr("fly_app.test", "secrets.TEST"),
 					resource.TestCheckNoResourceAttr("fly_app.test", "secrets.UNMANAGED.digest"),
 					func(state *terraform.State) error {
-						r, err := client.GetAppSecrets(context.Background(), name)
+						r, err := client.FlyGo.GetAppSecrets(context.Background(), name)
 						if err != nil {
 							return err
 						}
