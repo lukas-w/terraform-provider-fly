@@ -164,7 +164,7 @@ func (r flyAppResource) UpgradeState(context.Context) map[int64]resource.StateUp
 					"role_id": schema.StringAttribute{
 						Optional: true,
 					},
-					"enable_postgres_consul": schema.BoolAttribute{
+					"enable_consul": schema.BoolAttribute{
 						Optional: true,
 						Computed: true,
 					},
