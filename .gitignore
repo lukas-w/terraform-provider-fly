@@ -37,6 +37,7 @@ website/vendor
 
 .direnv
 .envrc
+.release
 
 examples/local/
 tmp/
