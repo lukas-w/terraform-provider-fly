@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"github.com/superfly/fly-go/flaps"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -136,11 +137,25 @@ func (vr flyVolumeResource) Read(ctx context.Context, req resource.ReadRequest, 
 	}
 
 	v, err := client.GetVolume(ctx, data.Id.ValueString())
-	if err != nil && strings.ToLower(err.Error()) == "could not find volume" {
+	var errMsg string
+	if err != nil {
+		errMsg = strings.ToLower(err.Error())
+	}
+	if err != nil && (strings.Contains(errMsg, "could not find volume") ||
+		strings.Contains(errMsg, "volume not found")) {
 		resp.State.RemoveResource(ctx)
 		return
 	} else if err != nil {
-		resp.Diagnostics.AddError("Read: query failed", err.Error())
+		volExists, err := VolumeExists(ctx, client, data.Id.ValueString())
+		if err != nil {
+			resp.Diagnostics.AddWarning("Couldn't determine if volume exists", err.Error());
+			return
+		} else if !volExists {
+			resp.State.RemoveResource(ctx)
+			return
+		} else {
+			resp.Diagnostics.AddError("Read: query failed", err.Error())
+		}
 	}
 	if v == nil {
 		resp.State.RemoveResource(ctx)
@@ -150,6 +165,19 @@ func (vr flyVolumeResource) Read(ctx context.Context, req resource.ReadRequest, 
 	data.fromApiVolume(*v)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+func VolumeExists(ctx context.Context, client *flaps.Client, id string) (bool, error) {
+	vols, err := client.GetVolumes(ctx)
+	if err != nil {
+		return false, err
+	}
+	for _, v := range vols {
+		if v.ID == id {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func (vr flyVolumeResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
