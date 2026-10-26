@@ -52,7 +52,6 @@ The following changes were made since then:
   - Added attribute `schedule`
   - Make waiting for machine start-up optional via the new `wait` attribute
   - Added support for waiting for health checks to pass using the new `wait_for_checks` attribute
-  - Use new flaps API client from `fly-go` instead of custom implementation
 - Added `fly_deploy_token` resource
 - Added `fly_organization` resource
 - Added `fly_organization` data source
@@ -78,4 +77,4 @@ The following changes were made since then:
 - Remove generated code & docs from version control
 - Removed the need for manually creating a Fly app for acceptance testing
 - Added test sweeper to delete stray apps
-
+- `fly_machine`: Use new flaps API client from `fly-go` instead of custom implementation

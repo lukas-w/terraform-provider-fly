@@ -1,22 +1,23 @@
-# fly.io terraform provider
+# Terraform Fly.io Provider
 
-[![Tests](https://github.com/fly-apps/terraform-provider-fly/actions/workflows/test.yml/badge.svg)](https://github.com/fly-apps/terraform-provider-fly/actions/workflows/test.yml)
+Unofficial Terraform provider for [Fly.io](https://fly.io/).
+
+This is pre-release quality software. Use at your own risk.
 
 ### Resources
-- app (stable, but apps will be deprecated soon. Begin to favor machines.)
-- cert (stable)
-- ip (stable)
-- volume (stable)
-- machines (beta)
-- postgres (todo)
+- app
+- certificate
+- deploy_token
+- ip
+- machines
+- volume
+- organization
+- redis
+- secret
+- wiregard_token
 
 ### Data sources
-- app (stable)
-- cert (stable)
-- ip (stable)
-- volume (stable)
-
-
-### TODO
-
-1. Build abstraction around querying local tunnel
+- app
+- certificate
+- ip
+- volume
