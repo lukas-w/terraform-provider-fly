@@ -1,9 +1,10 @@
 default: build generate
 
-build: generate
+build:
 	go build -v ./...
 
 generate:
+	go generate
 	cd tools; go generate ./...
 
 # Run acceptance tests

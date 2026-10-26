@@ -35,3 +35,5 @@ func main() {
 		log.Fatal(err.Error())
 	}
 }
+
+//go:generate go run github.com/Khan/genqlient ./graphql/genqlient.yaml
