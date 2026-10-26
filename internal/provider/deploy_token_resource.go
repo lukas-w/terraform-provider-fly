@@ -94,9 +94,11 @@ func (a deployTokenResource) Create(ctx context.Context, req resource.CreateRequ
 	app, err := a.apiClient.GetApp(ctx, plan.App.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to get app", err.Error())
+		return
 	}
 	if app == nil {
 		resp.Diagnostics.AddError("App not found", fmt.Sprintf("App %s not found", plan.App.ValueString()))
+		return
 	}
 
 	token, err := graphql.CreateLimitedAccessToken(ctx, a.gqlClient, graphql.CreateLimitedAccessTokenInput{
