@@ -1,11 +1,20 @@
 default: build generate
 
-build:
+gql_dest = graphql/generated.go
+gql_src = graphql/schema.graphql graphql/genqlient.graphql graphql/genqlient.yaml
+
+build: $(gql_dest)
 	go build -v ./...
 
-generate:
+$(gql_dest): $(gql_src)
 	go generate
+
+generate: $(gql_dest)
 	cd tools; go generate ./...
+
+.PHONY: clean
+clean:
+	rm -rf docs $(gql_dest)
 
 # Run acceptance tests
 .PHONY: test
